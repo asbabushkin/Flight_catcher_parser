@@ -7,7 +7,7 @@ https://www.onetwotrip.com/_avia-search-proxy/search/v3?route=0110CEKMOW0710&ad=
 Лучший рейс на плавающие даты
 https://www.onetwotrip.com/_avia/deals_v4/directApiTop?origin=CEK&destinations=MOW&departure_date_from=2022-09-29&departure_date_to=2022-10-03&roundtrip_flights=true&noPricing=false&group_by_date=true&deals_limit=50&all_combinations=true&source=yandex_direct&return_date_from=2022-10-05&return_date_to=2022-10-09
 """
-
+import os
 import psycopg2 as ps2
 import schedule
 from fake_useragent import UserAgent
@@ -17,11 +17,15 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from telethon import TelegramClient, events, sync, connection as tel_connection
 
-from fl_catcher_data import telegram_api, telegram_hash, url_ottrip
-from config import host, user, password, port, db_name
+from fl_catcher_data import city_codes
 
+from dotenv import load_dotenv
+
+load_dotenv()
 options_chrome = webdriver.ChromeOptions()
-options_chrome.add_extension('/home/asb/Python/Parsing_course/coordinates.crx')
+
+
+# options_chrome.add_extension('/home/asb/Python/Parsing_course/coordinates.crx')
 
 
 def get_one_two_trip(url):
@@ -38,42 +42,67 @@ def main():
     user_agent = ua.random
     print(user_agent)
     options_chrome.add_argument(f'user-agent={user_agent}')
-    price = get_one_two_trip(url_ottrip)
+    price = get_one_two_trip(search_link)
     print(price)
-    with TelegramClient('flight_catcher', telegram_api, telegram_hash) as client:
-        client.send_message('@asbabushkin', message=f'Flight catcher: цена перелета {price}')
+    with TelegramClient('flight_catcher', os.getenv('TELEGRAM_API'), os.getenv('TELEGRAM_HASH')) as client:
+        client.send_message(os.getenv('TELEGRAM_USER_NAME'), message=f'Flight catcher: цена перелета {price}')
 
 
 if __name__ == '__main__':
 
     try:
         db_connection = ps2.connect(
-            host=host,
-            user=user,
-            password=password,
-            port=port,
-            database=db_name
+            host=os.getenv('db_host'),
+            user=os.getenv('db_user'),
+            password=os.getenv('db_password'),
+            port=os.getenv('db_port'),
+            database=os.getenv('db_name')
         )
         db_connection.autocommit = True
 
         with db_connection.cursor() as cursor:
-            #[print(i) for i in cursor.execute("SELECT * FROM flight_search_search;")]
+            # [print(i) for i in cursor.execute("SELECT * FROM flight_search_search;")]
             cursor.execute(
                 "SELECT * FROM flight_search_search;"
-                )
-            print(cursor.fetchall())
+            )
+            data = cursor.fetchall()
+            print(data)
 
-            #print(f'Server version: {cursor.fetchall()}')
+            # url = 'https://www.onetwotrip.com/ru/f/search/1010CEKLED?s=true&sc=E&ac=1&tr=0'
+
 
 
     except Exception as _ex:
-        print('[INFO] Error while working with PostgreSL', _ex)
+        print('[INFO] Error while working with PostgreSQL', _ex)
 
 
     finally:
         if db_connection:
             db_connection.close()
             print('[INFO] PostgreSQL connection closed')
+
+    for record in data:
+        return_date = ''
+        depart_date = str(record[3].day).rjust(2, '0') + str(record[3].month).rjust(2, '0')
+        print(depart_date)
+        if record[4] is not None:
+            return_date = str(record[4].day).rjust(2, '0') + str(record[4].month).rjust(2, '0')
+            print(return_date)
+        for i in city_codes:
+            if i['city_rus'] == record[-2]:
+                origin_city_code = i['code_eng']
+                print(origin_city_code)
+                break
+        for i in city_codes:
+            if i['city_rus'] == record[-1]:
+                dest_city_code = i['code_eng']
+                print(dest_city_code)
+                break
+        num_adults = record[5]
+        print(f'{num_adults} passengers')
+        search_link = f'https://www.onetwotrip.com/ru/f/search/{depart_date}{dest_city_code}{origin_city_code}{return_date}?s=true&sc=E&ac={num_adults}'
+        print(search_link)
+        main()
 
     # schedule.every().minute.do(main)
     # while True:
