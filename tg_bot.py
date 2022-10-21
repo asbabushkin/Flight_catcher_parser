@@ -6,7 +6,7 @@ import asyncio
 
 from aiogram import Bot, Dispatcher, executor, types
 from fl_catcher_data import token, telegram_user_id, url_ottrip
-from main import get_one_two_trip
+from main import get_price
 
 bot = Bot(token=token, parse_mode=types.ParseMode.HTML)
 dp = Dispatcher(bot)
@@ -15,7 +15,7 @@ dp = Dispatcher(bot)
 
 async def check_price_every_minute():
     while True:
-        price = get_one_two_trip(url_ottrip)
+        price = get_price(url_ottrip)
         await bot.send_message(telegram_user_id, price)
         await asyncio.sleep(30)
 

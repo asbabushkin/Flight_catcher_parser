@@ -16,19 +16,13 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from telethon import TelegramClient, events, sync, connection as tel_connection
-
-from fl_catcher_data import city_codes
-
 from dotenv import load_dotenv
 
 load_dotenv()
 options_chrome = webdriver.ChromeOptions()
 
 
-# options_chrome.add_extension('/home/asb/Python/Parsing_course/coordinates.crx')
-
-
-def get_one_two_trip(url):
+def get_price(url):
     with webdriver.Chrome(options=options_chrome) as browser:
         browser.get(url)
         if WebDriverWait(browser, 100, poll_frequency=0.5).until(
@@ -37,14 +31,13 @@ def get_one_two_trip(url):
             return div.find_elements(By.CLASS_NAME, '_4-iO8')[1].text
 
 
-def main():
+def send_result():
     ua = UserAgent()
     user_agent = ua.random
-    print(user_agent)
     options_chrome.add_argument(f'user-agent={user_agent}')
-    price = get_one_two_trip(search_link)
-    print(price)
-    with TelegramClient('flight_catcher', os.getenv('TELEGRAM_API'), os.getenv('TELEGRAM_HASH')) as client:
+    price = get_price(search_link)
+    print('Price:', price)
+    with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
         client.send_message(os.getenv('TELEGRAM_USER_NAME'), message=f'Flight catcher: цена перелета {price}')
 
 
@@ -61,14 +54,12 @@ if __name__ == '__main__':
         db_connection.autocommit = True
 
         with db_connection.cursor() as cursor:
-            # [print(i) for i in cursor.execute("SELECT * FROM flight_search_search;")]
-            cursor.execute(
-                "SELECT * FROM flight_search_search;"
-            )
-            data = cursor.fetchall()
-            print(data)
+            cursor.execute("SELECT * FROM flight_search_search;")
+            search_data = cursor.fetchall()
 
-            # url = 'https://www.onetwotrip.com/ru/f/search/1010CEKLED?s=true&sc=E&ac=1&tr=0'
+            cursor.execute("SELECT * FROM flight_search_citycode;")
+            values = cursor.fetchall()
+            keys = ['city_eng', 'city_rus', 'code_eng', 'code_rus']
 
 
 
@@ -81,28 +72,25 @@ if __name__ == '__main__':
             db_connection.close()
             print('[INFO] PostgreSQL connection closed')
 
-    for record in data:
+    city_codes = [dict(zip(keys, values[v][1:])) for v in range(len(values))]
+    for record in search_data:
         return_date = ''
         depart_date = str(record[3].day).rjust(2, '0') + str(record[3].month).rjust(2, '0')
-        print(depart_date)
         if record[4] is not None:
             return_date = str(record[4].day).rjust(2, '0') + str(record[4].month).rjust(2, '0')
-            print(return_date)
         for i in city_codes:
             if i['city_rus'] == record[-2]:
                 origin_city_code = i['code_eng']
-                print(origin_city_code)
                 break
         for i in city_codes:
             if i['city_rus'] == record[-1]:
                 dest_city_code = i['code_eng']
-                print(dest_city_code)
                 break
         num_adults = record[5]
-        print(f'{num_adults} passengers')
+
         search_link = f'https://www.onetwotrip.com/ru/f/search/{depart_date}{dest_city_code}{origin_city_code}{return_date}?s=true&sc=E&ac={num_adults}'
         print(search_link)
-        main()
+        send_result()
 
     # schedule.every().minute.do(main)
     # while True:
