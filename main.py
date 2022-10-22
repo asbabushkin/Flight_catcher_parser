@@ -31,14 +31,21 @@ def get_price(url):
             return div.find_elements(By.CLASS_NAME, '_4-iO8')[1].text
 
 
-def send_result():
+def send_result(or_city, des_city, dep_date, ret_date):
     ua = UserAgent()
     user_agent = ua.random
     options_chrome.add_argument(f'user-agent={user_agent}')
     price = get_price(search_link)
-    print('Price:', price)
-    with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
-        client.send_message(os.getenv('TELEGRAM_USER_NAME'), message=f'Flight catcher: цена перелета {price}')
+    if ret_date is not None:
+        print(f'Перелет {or_city} - {des_city} {dep_date} - {ret_date} цена {price} руб.')
+        with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
+            client.send_message(os.getenv('TELEGRAM_USER_NAME'),
+                                message=f'Перелет {or_city} - {des_city}\nвылет {dep_date}\nвозвращение {ret_date}\nцена {price} руб.')
+    else:
+        print(f'Перелет {or_city} - {des_city} вылет {dep_date} цена {price} руб.')
+        with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
+            client.send_message(os.getenv('TELEGRAM_USER_NAME'),
+                                message=f'Перелет {or_city} - {des_city}\nвылет {dep_date}\nцена {price} руб.')
 
 
 if __name__ == '__main__':
@@ -56,7 +63,6 @@ if __name__ == '__main__':
         with db_connection.cursor() as cursor:
             cursor.execute("SELECT * FROM flight_search_search;")
             search_data = cursor.fetchall()
-
             cursor.execute("SELECT * FROM flight_search_citycode;")
             values = cursor.fetchall()
             keys = ['city_eng', 'city_rus', 'code_eng', 'code_rus']
@@ -74,7 +80,6 @@ if __name__ == '__main__':
 
     city_codes = [dict(zip(keys, values[v][1:])) for v in range(len(values))]
     for record in search_data:
-        return_date = ''
         depart_date = str(record[3].day).rjust(2, '0') + str(record[3].month).rjust(2, '0')
         if record[4] is not None:
             return_date = str(record[4].day).rjust(2, '0') + str(record[4].month).rjust(2, '0')
@@ -90,7 +95,7 @@ if __name__ == '__main__':
 
         search_link = f'https://www.onetwotrip.com/ru/f/search/{depart_date}{dest_city_code}{origin_city_code}{return_date}?s=true&sc=E&ac={num_adults}'
         print(search_link)
-        send_result()
+        send_result(or_city=record[-2], des_city=record[-1], dep_date=record[3], ret_date=record[4])
 
     # schedule.every().minute.do(main)
     # while True:
