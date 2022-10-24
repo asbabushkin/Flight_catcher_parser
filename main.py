@@ -17,6 +17,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from telethon import TelegramClient, events, sync, connection as tel_connection
 from dotenv import load_dotenv
+from psycopg2.extensions import AsIs
+
 
 load_dotenv()
 options_chrome = webdriver.ChromeOptions()
@@ -48,8 +50,7 @@ def send_result(or_city, des_city, dep_date, ret_date):
                                 message=f'Перелет {or_city} - {des_city}\nвылет {dep_date}\nцена {price} руб.')
 
 
-if __name__ == '__main__':
-
+def set_connection():
     try:
         db_connection = ps2.connect(
             host=os.getenv('db_host'),
@@ -59,25 +60,54 @@ if __name__ == '__main__':
             database=os.getenv('db_name')
         )
         db_connection.autocommit = True
-
-        with db_connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM flight_search_search;")
-            search_data = cursor.fetchall()
-            cursor.execute("SELECT * FROM flight_search_citycode;")
-            values = cursor.fetchall()
-            keys = ['city_eng', 'city_rus', 'code_eng', 'code_rus']
-
-
+        return db_connection
 
     except Exception as _ex:
         print('[INFO] Error while working with PostgreSQL', _ex)
+        raise _ex
+
+def get_data(db_connection, table):
+    cursor = db_connection.cursor()
+    cursor.execute("SELECT * FROM %(table_name)s;", {"table_name": AsIs(table)})
+    return cursor.fetchall()
 
 
-    finally:
-        if db_connection:
-            db_connection.close()
-            print('[INFO] PostgreSQL connection closed')
+if __name__ == '__main__':
 
+    with set_connection() as conn:
+        search_data = get_data(conn, 'flight_search_search')
+        values = get_data(conn, 'flight_search_citycode')
+
+
+    # try:
+    #     db_connection = ps2.connect(
+    #         host=os.getenv('db_host'),
+    #         user=os.getenv('db_user'),
+    #         password=os.getenv('db_password'),
+    #         port=os.getenv('db_port'),
+    #         database=os.getenv('db_name')
+    #     )
+    #     db_connection.autocommit = True
+    #
+    #     with db_connection.cursor() as cursor:
+    #         cursor.execute("SELECT * FROM flight_search_search;")
+    #         search_data = cursor.fetchall()
+    #         cursor.execute("SELECT * FROM flight_search_citycode;")
+    #         values = cursor.fetchall()
+    #         keys = ['city_eng', 'city_rus', 'code_eng', 'code_rus']
+    #
+    #
+    #
+    # except Exception as _ex:
+    #     print('[INFO] Error while working with PostgreSQL', _ex)
+    #
+    #
+    # finally:
+    #     if db_connection:
+    #         db_connection.close()
+    #         print('[INFO] PostgreSQL connection closed')
+
+    keys = ['city_eng', 'city_rus', 'code_eng', 'code_rus']
     city_codes = [dict(zip(keys, values[v][1:])) for v in range(len(values))]
     for record in search_data:
         depart_date = str(record[3].day).rjust(2, '0') + str(record[3].month).rjust(2, '0')
