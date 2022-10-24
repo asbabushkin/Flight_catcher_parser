@@ -1,11 +1,5 @@
 """
-Реализация через telethon & schedule
-https://www.onetwotrip.com/ru/f/search/0110CEKMOW0710?sc=E&ac=2&ca=0_4&srcmarker2=newindex
-Запрос все рейсы
-https://www.onetwotrip.com/_avia-search-proxy/search/v3?route=0110CEKMOW0710&ad=2&cn=1&in=1&showDeeplink=false&cs=E&source=yandex_direct&priceIncludeBaggage=true&noClearNoBags=true&noMix=true&srcmarker=airlines_airport_desk_all_agency1_cpa_k36332661070&cryptoTripsVersion=61&doNotMap=true
-
-Лучший рейс на плавающие даты
-https://www.onetwotrip.com/_avia/deals_v4/directApiTop?origin=CEK&destinations=MOW&departure_date_from=2022-09-29&departure_date_to=2022-10-03&roundtrip_flights=true&noPricing=false&group_by_date=true&deals_limit=50&all_combinations=true&source=yandex_direct&return_date_from=2022-10-05&return_date_to=2022-10-09
+Implemented using telethon & schedule
 """
 import os
 import psycopg2 as ps2
@@ -46,7 +40,7 @@ def get_data(db_connection, table):
     return cursor.fetchall()
 
 
-def get_price(url):
+def get_flight_price(url):
     with webdriver.Chrome(options=options_chrome) as browser:
         browser.get(url)
         if WebDriverWait(browser, 100, poll_frequency=0.5).until(
@@ -59,7 +53,7 @@ def send_result(or_city, des_city, dep_date, ret_date, search_link):
     ua = UserAgent()
     user_agent = ua.random
     options_chrome.add_argument(f'user-agent={user_agent}')
-    price = get_price(search_link)
+    price = get_flight_price(search_link)
     if ret_date is not None:
         print(f'Перелет {or_city} - {des_city} {dep_date} - {ret_date} цена {price} руб.')
         with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
