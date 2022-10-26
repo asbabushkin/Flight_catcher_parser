@@ -40,6 +40,15 @@ def get_data(db_connection, table):
     return cursor.fetchall()
 
 
+def delete_old_records(db_connection, table, archive):
+    cursor = db_connection.cursor()
+    cursor.execute(
+        "INSERT INTO %(archive)s (id, oneway_flight, max_transhipments, depart_date, return_date, num_adults, num_children, luggage, search_init_date, telegr_acc, phone_num, email, depature_city, dest_city) SELECT * FROM %(table_name)s WHERE EXTRACT(EPOCH FROM now() - search_init_date)/3600 > 24;",
+        {"archive": AsIs(archive), "table_name": AsIs(table)})
+    cursor.execute("DELETE FROM %(table_name)s WHERE EXTRACT(EPOCH FROM now() - search_init_date)/3600 > 24;",
+                   {"table_name": AsIs(table)})
+
+
 def get_flight_price(url):
     with webdriver.Chrome(options=options_chrome) as browser:
         browser.get(url)
@@ -68,6 +77,7 @@ def send_result(or_city, des_city, dep_date, ret_date, search_link):
 
 def main():
     with set_connection() as conn:
+        delete_old_records(conn, 'flight_search_search', 'flight_search_archive')
         search_data = get_data(conn, 'flight_search_search')
         city_data = get_data(conn, 'flight_search_citycode')
 
