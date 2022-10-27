@@ -43,9 +43,9 @@ def get_data(db_connection, table):
 def delete_old_records(db_connection, table, archive):
     cursor = db_connection.cursor()
     cursor.execute(
-        "INSERT INTO %(archive)s (id, oneway_flight, max_transhipments, depart_date, return_date, num_adults, num_children, luggage, search_init_date, telegr_acc, phone_num, email, depature_city, dest_city) SELECT * FROM %(table_name)s WHERE EXTRACT(EPOCH FROM now() - search_init_date)/3600 > 24;",
+        "INSERT INTO %(archive)s (old_id, oneway_flight, max_transhipments, depart_date, return_date, num_adults, num_children, luggage, search_init_date, telegr_acc, phone_num, email, depature_city, dest_city) SELECT * FROM %(table_name)s WHERE EXTRACT(EPOCH FROM now() - search_init_date)/3600 > 24;",
         {"archive": AsIs(archive), "table_name": AsIs(table)})
-    cursor.execute("DELETE FROM %(table_name)s WHERE EXTRACT(EPOCH FROM now() - search_init_date)/3600 > 24;",
+    cursor.execute("DELETE FROM %(table_name)s WHERE EXTRACT(EPOCH FROM now() - search_init_date)/3600 > 72;",
                    {"table_name": AsIs(table)})
 
 
@@ -55,7 +55,7 @@ def get_flight_price(url):
         if WebDriverWait(browser, 100, poll_frequency=0.5).until(
                 EC.presence_of_element_located((By.CLASS_NAME, 'c27ZC'))):
             div = browser.find_element(By.CLASS_NAME, 'jC6yz')
-            return div.find_elements(By.CLASS_NAME, '_4-iO8')[1].text
+            return div.find_elements(By.CLASS_NAME, '_4-iO8')[-1].text
 
 
 def send_result(or_city, des_city, dep_date, ret_date, search_link):
