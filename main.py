@@ -5,18 +5,20 @@ import os
 import psycopg2 as ps2
 import schedule
 from fake_useragent import UserAgent
-from selenium import webdriver
+# from selenium import webdriver
+from seleniumwire import webdriver as sw_webdriver
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from telethon import TelegramClient, events, sync, connection as tel_connection
 from dotenv import load_dotenv
 from psycopg2.extensions import AsIs
-#from seleniumwire import webdriver
+
 from random import choice
 
 load_dotenv()
-options_chrome = webdriver.ChromeOptions()
+#options_chrome = webdriver.ChromeOptions()
 
 
 def set_connection():
@@ -52,17 +54,18 @@ def delete_old_records(db_connection, table, archive):
 
 
 def get_flight_price(url):
-    # proxy_ip = choice(os.getenv('proxy_list'))
-    # options = {'proxy': {
-    #     'http': f"http://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}",
-    #     'https': f"https://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}",
-    # }}
-
+    proxy_list = os.getenv('proxy_list')[2:-3].replace(',', '').replace("'", "").split()
+    proxy_ip = choice(proxy_list)
     ua = UserAgent()
     user_agent = ua.random
-    options_chrome.add_argument(f'user-agent={user_agent}')
+    options = {'proxy': {
+        'http': f"http://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:5500",
+        'https': f"https://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:5500"
+    },
+       # "User-Agent": user_agent,
+    }
 
-    with webdriver.Chrome(options=options_chrome) as browser:
+    with sw_webdriver.Chrome(seleniumwire_options=options) as browser:
         browser.get(url)
         if WebDriverWait(browser, 100, poll_frequency=0.5).until(
                 EC.presence_of_element_located((By.CLASS_NAME, 'c27ZC'))):
@@ -71,7 +74,6 @@ def get_flight_price(url):
 
 
 def send_result(or_city, des_city, dep_date, ret_date, price):
-
     if ret_date is not None:
         print(f'Перелет {or_city} - {des_city} {dep_date} - {ret_date} цена {price} руб.')
         with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
