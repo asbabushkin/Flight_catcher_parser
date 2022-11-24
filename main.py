@@ -54,18 +54,20 @@ def delete_old_records(db_connection, table, archive):
 
 
 def get_flight_price(url):
-    proxy_list = os.getenv('proxy_list')[2:-3].replace(',', '').replace("'", "").split()
+    proxy_list = os.getenv('proxy_list')[1:-1].split(', ')
     proxy_ip = choice(proxy_list)
     ua = UserAgent()
     user_agent = ua.random
-    options = {'proxy': {
-        'http': f"http://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:5500",
-        'https': f"https://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:5500"
-    },
-       # "User-Agent": user_agent,
+    options = {
+        'proxy': {
+            'http': f"http://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:{os.getenv('http_port')}",
+            'https': f"https://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:{os.getenv('http_port')}"
+            },
+            'User-Agent': user_agent,
     }
 
     with sw_webdriver.Chrome(seleniumwire_options=options) as browser:
+        print(options)
         browser.get(url)
         if WebDriverWait(browser, 100, poll_frequency=0.5).until(
                 EC.presence_of_element_located((By.CLASS_NAME, 'c27ZC'))):
