@@ -2,23 +2,22 @@
 Implemented using telethon & schedule
 """
 import os
+import time
 import psycopg2 as ps2
 import schedule
 from fake_useragent import UserAgent
-# from selenium import webdriver
-from seleniumwire import webdriver as sw_webdriver
-
+#from selenium import webdriver
+from seleniumwire import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from telethon import TelegramClient, events, sync, connection as tel_connection
 from dotenv import load_dotenv
 from psycopg2.extensions import AsIs
-
 from random import choice
 
 load_dotenv()
-#options_chrome = webdriver.ChromeOptions()
+
 
 
 def set_connection():
@@ -57,17 +56,19 @@ def get_flight_price(url):
     proxy_list = os.getenv('proxy_list')[1:-1].split(', ')
     proxy_ip = choice(proxy_list)
     ua = UserAgent()
-    user_agent = ua.random
     options = {
         'proxy': {
             'http': f"http://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:{os.getenv('http_port')}",
             'https': f"https://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:{os.getenv('http_port')}"
             },
-            'User-Agent': user_agent,
-    }
+        }
+    opts = webdriver.ChromeOptions()
+    opts.add_argument(f'user-agent={ua.random}')
 
-    with sw_webdriver.Chrome(seleniumwire_options=options) as browser:
-        print(options)
+
+    with webdriver.Chrome(seleniumwire_options=options, options=opts) as browser:
+        browser.get('https://httpbin.org/user-agent')
+        time.sleep(5)
         browser.get(url)
         if WebDriverWait(browser, 100, poll_frequency=0.5).until(
                 EC.presence_of_element_located((By.CLASS_NAME, 'c27ZC'))):
