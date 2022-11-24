@@ -12,6 +12,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from telethon import TelegramClient, events, sync, connection as tel_connection
 from dotenv import load_dotenv
 from psycopg2.extensions import AsIs
+#from seleniumwire import webdriver
+from random import choice
 
 load_dotenv()
 options_chrome = webdriver.ChromeOptions()
@@ -43,13 +45,23 @@ def get_data(db_connection, table):
 def delete_old_records(db_connection, table, archive):
     cursor = db_connection.cursor()
     cursor.execute(
-        "INSERT INTO %(archive)s (old_id, oneway_flight, max_transhipments, depart_date, return_date, num_adults, num_children, luggage, search_init_date, telegr_acc, phone_num, email, depature_city, dest_city) SELECT * FROM %(table_name)s WHERE EXTRACT(EPOCH FROM now() - search_init_date)/3600 > 24;",
+        "INSERT INTO %(archive)s (old_id, oneway_flight, max_transhipments, depart_date, return_date, num_adults, num_children, luggage, search_init_date, telegr_acc, phone_num, email, depature_city, dest_city) SELECT * FROM %(table_name)s WHERE EXTRACT(EPOCH FROM now() - search_init_date)/3600 > 72;",
         {"archive": AsIs(archive), "table_name": AsIs(table)})
     cursor.execute("DELETE FROM %(table_name)s WHERE EXTRACT(EPOCH FROM now() - search_init_date)/3600 > 72;",
                    {"table_name": AsIs(table)})
 
 
 def get_flight_price(url):
+    # proxy_ip = choice(os.getenv('proxy_list'))
+    # options = {'proxy': {
+    #     'http': f"http://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}",
+    #     'https': f"https://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}",
+    # }}
+
+    ua = UserAgent()
+    user_agent = ua.random
+    options_chrome.add_argument(f'user-agent={user_agent}')
+
     with webdriver.Chrome(options=options_chrome) as browser:
         browser.get(url)
         if WebDriverWait(browser, 100, poll_frequency=0.5).until(
@@ -58,11 +70,8 @@ def get_flight_price(url):
             return div.find_elements(By.CLASS_NAME, '_4-iO8')[-1].text
 
 
-def send_result(or_city, des_city, dep_date, ret_date, search_link):
-    ua = UserAgent()
-    user_agent = ua.random
-    options_chrome.add_argument(f'user-agent={user_agent}')
-    price = get_flight_price(search_link)
+def send_result(or_city, des_city, dep_date, ret_date, price):
+
     if ret_date is not None:
         print(f'Перелет {or_city} - {des_city} {dep_date} - {ret_date} цена {price} руб.')
         with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
@@ -76,6 +85,8 @@ def send_result(or_city, des_city, dep_date, ret_date, search_link):
 
 
 def main():
+    dest_city_code = origin_city_code = return_date = ''
+
     with set_connection() as conn:
         delete_old_records(conn, 'flight_search_search', 'flight_search_archive')
         search_data = get_data(conn, 'flight_search_search')
@@ -98,9 +109,9 @@ def main():
         num_adults = record[5]
 
         search_link = f'https://www.onetwotrip.com/ru/f/search/{depart_date}{dest_city_code}{origin_city_code}{return_date}?s=true&sc=E&ac={num_adults}'
-        print(search_link)
+        price = get_flight_price(search_link)
         send_result(or_city=record[-2], des_city=record[-1], dep_date=record[3], ret_date=record[4],
-                    search_link=search_link)
+                    price=price)
     return True
 
 
