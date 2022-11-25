@@ -45,10 +45,11 @@ def get_data(db_connection, table):
 def delete_depart_date_expired_records(db_connection, table, archive):
     cursor = db_connection.cursor()
     cursor.execute(
-        "INSERT INTO %(archive)s (old_id, oneway_flight, max_transhipments, depart_date, return_date, num_adults, num_children, luggage, search_init_date, telegr_acc, phone_num, email, depature_city, dest_city) SELECT * FROM %(table_name)s WHERE depart_date < CURDATE();",
+        "INSERT INTO %(archive)s (old_id, oneway_flight, max_transhipments, depart_date, return_date, num_adults, num_children, luggage, search_init_date, telegr_acc, phone_num, email, depature_city, dest_city) SELECT * FROM %(table_name)s WHERE depart_date < CURRENT_DATE;",
         {"archive": AsIs(archive), "table_name": AsIs(table)})
-    cursor.execute("DELETE FROM %(table_name)s WHERE depart_date < CURDATE();",
+    cursor.execute("DELETE FROM %(table_name)s WHERE depart_date < CURRENT_DATE;",
                    {"table_name": AsIs(table)})
+    return None
 
 
 def delete_old_records(db_connection, table, archive):
@@ -84,22 +85,20 @@ def get_flight_price(url):
             return div.find_elements(By.CLASS_NAME, '_4-iO8')[-1].text
 
 
-def send_result(or_city, des_city, dep_date, ret_date, price):
+def send_result(or_city, des_city, dep_date, ret_date, price, telegram_user):
     if ret_date is not None:
         print(f'Перелет {or_city} - {des_city} {dep_date} - {ret_date} цена {price} руб.')
         with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
-            client.send_message(os.getenv('TELEGRAM_USER_NAME'),
+            client.send_message(telegram_user,
                                 message=f'Перелет {or_city} - {des_city}\nвылет {dep_date}\nвозвращение {ret_date}\nцена {price} руб.')
     else:
         print(f'Перелет {or_city} - {des_city} вылет {dep_date} цена {price} руб.')
         with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
-            client.send_message(os.getenv('TELEGRAM_USER_NAME'),
+            client.send_message(telegram_user,
                                 message=f'Перелет {or_city} - {des_city}\nвылет {dep_date}\nцена {price} руб.')
 
 
 def main():
-    dest_city_code = origin_city_code = return_date = ''
-
     with set_connection() as conn:
         delete_depart_date_expired_records(conn, 'flight_search_search', 'flight_search_archive')
         delete_old_records(conn, 'flight_search_search', 'flight_search_archive')
@@ -109,6 +108,7 @@ def main():
     keys = ['city_eng', 'city_rus', 'code_eng', 'code_rus']
     city_codes = [dict(zip(keys, city_data[c][1:])) for c in range(len(city_data))]
     for record in search_data:
+        dest_city_code = origin_city_code = return_date = depart_date = num_adults = telegram_user = ''
         depart_date = str(record[3].day).rjust(2, '0') + str(record[3].month).rjust(2, '0')
         if record[4] is not None:
             return_date = str(record[4].day).rjust(2, '0') + str(record[4].month).rjust(2, '0')
@@ -121,11 +121,13 @@ def main():
                 dest_city_code = i['code_eng']
                 break
         num_adults = record[5]
+        telegram_user = record[9]
+        print(telegram_user)
 
-        search_link = f'https://www.onetwotrip.com/ru/f/search/{depart_date}{dest_city_code}{origin_city_code}{return_date}?s=true&sc=E&ac={num_adults}'
+        search_link = f'https://www.onetwotrip.com/ru/f/search/{depart_date}{origin_city_code}{dest_city_code}{return_date}?s=true&sc=E&ac={num_adults}'
         price = get_flight_price(search_link)
         send_result(or_city=record[-2], des_city=record[-1], dep_date=record[3], ret_date=record[4],
-                    price=price)
+                    price=price, telegram_user=telegram_user)
     return True
 
 
