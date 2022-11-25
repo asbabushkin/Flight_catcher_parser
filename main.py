@@ -6,7 +6,7 @@ import time
 import psycopg2 as ps2
 import schedule
 from fake_useragent import UserAgent
-#from selenium import webdriver
+# from selenium import webdriver
 from seleniumwire import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -17,7 +17,6 @@ from psycopg2.extensions import AsIs
 from random import choice
 
 load_dotenv()
-
 
 
 def set_connection():
@@ -60,15 +59,15 @@ def get_flight_price(url):
         'proxy': {
             'http': f"http://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:{os.getenv('http_port')}",
             'https': f"https://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:{os.getenv('http_port')}"
-            },
-        }
+        },
+    }
     opts = webdriver.ChromeOptions()
     opts.add_argument(f'user-agent={ua.random}')
-
+    opts.add_argument('--headless')
 
     with webdriver.Chrome(seleniumwire_options=options, options=opts) as browser:
-        browser.get('https://httpbin.org/user-agent')
-        time.sleep(5)
+        #        browser.get('https://httpbin.org/user-agent')
+        ##        time.sleep(5)
         browser.get(url)
         if WebDriverWait(browser, 100, poll_frequency=0.5).until(
                 EC.presence_of_element_located((By.CLASS_NAME, 'c27ZC'))):
