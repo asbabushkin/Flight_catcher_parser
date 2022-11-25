@@ -42,6 +42,15 @@ def get_data(db_connection, table):
     return cursor.fetchall()
 
 
+def delete_depart_date_expired_records(db_connection, table, archive):
+    cursor = db_connection.cursor()
+    cursor.execute(
+        "INSERT INTO %(archive)s (old_id, oneway_flight, max_transhipments, depart_date, return_date, num_adults, num_children, luggage, search_init_date, telegr_acc, phone_num, email, depature_city, dest_city) SELECT * FROM %(table_name)s WHERE depart_date < CURDATE();",
+        {"archive": AsIs(archive), "table_name": AsIs(table)})
+    cursor.execute("DELETE FROM %(table_name)s WHERE depart_date < CURDATE();",
+                   {"table_name": AsIs(table)})
+
+
 def delete_old_records(db_connection, table, archive):
     cursor = db_connection.cursor()
     cursor.execute(
@@ -92,6 +101,7 @@ def main():
     dest_city_code = origin_city_code = return_date = ''
 
     with set_connection() as conn:
+        delete_depart_date_expired_records(conn, 'flight_search_search', 'flight_search_archive')
         delete_old_records(conn, 'flight_search_search', 'flight_search_archive')
         search_data = get_data(conn, 'flight_search_search')
         city_data = get_data(conn, 'flight_search_citycode')
