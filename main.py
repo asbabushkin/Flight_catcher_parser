@@ -11,6 +11,7 @@ from seleniumwire import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
 from telethon import TelegramClient, events, sync, connection as tel_connection
 from dotenv import load_dotenv
 from psycopg2.extensions import AsIs
@@ -79,23 +80,36 @@ def get_flight_price(url):
         #        browser.get('https://httpbin.org/user-agent')
         ##        time.sleep(5)
         browser.get(url)
-        if WebDriverWait(browser, 100, poll_frequency=0.5).until(
-                EC.presence_of_element_located((By.CLASS_NAME, 'c27ZC'))):
-            div = browser.find_element(By.CLASS_NAME, 'jC6yz')
-            return div.find_elements(By.CLASS_NAME, '_4-iO8')[-1].text
+        try:
+            if WebDriverWait(browser, 20, poll_frequency=0.5).until(
+                    EC.presence_of_element_located((By.CLASS_NAME, 'c27ZC'))):
+                div = browser.find_element(By.CLASS_NAME, 'jC6yz')
+                return div.find_elements(By.CLASS_NAME, '_4-iO8')[-1].text
+        except TimeoutException:
+            return False
+
 
 
 def send_result(or_city, des_city, dep_date, ret_date, price, telegram_user):
-    if ret_date is not None:
-        print(f'Перелет {or_city} - {des_city} {dep_date} - {ret_date} цена {price} руб.')
+    if not price:
+        print(f'Перелет {or_city} - {des_city} с указанными параметрами не найден.')
         with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
             client.send_message(telegram_user,
-                                message=f'Перелет {or_city} - {des_city}\nвылет {dep_date}\nвозвращение {ret_date}\nцена {price} руб.')
+                                message=f'Перелет {or_city} - {des_city}\n с указанными параметрами не найден.')
+        return 'Flight not found'
     else:
-        print(f'Перелет {or_city} - {des_city} вылет {dep_date} цена {price} руб.')
-        with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
-            client.send_message(telegram_user,
-                                message=f'Перелет {or_city} - {des_city}\nвылет {dep_date}\nцена {price} руб.')
+        if ret_date is not None:
+            print(f'Перелет {or_city} - {des_city} {dep_date} - {ret_date} цена {price} руб.')
+            with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
+                client.send_message(telegram_user,
+                                    message=f'Перелет {or_city} - {des_city}\nвылет {dep_date}\nвозвращение {ret_date}\nцена {price} руб.')
+            return 'Round flight'
+        else:
+            print(f'Перелет {or_city} - {des_city} вылет {dep_date} цена {price} руб.')
+            with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
+                client.send_message(telegram_user,
+                                    message=f'Перелет {or_city} - {des_city}\nвылет {dep_date}\nцена {price} руб.')
+            return 'Oneway flight'
 
 
 def main():
@@ -122,9 +136,10 @@ def main():
                 break
         num_adults = record[5]
         telegram_user = record[9]
+        num_tranship = record[2]
         print(telegram_user)
 
-        search_link = f'https://www.onetwotrip.com/ru/f/search/{depart_date}{origin_city_code}{dest_city_code}{return_date}?s=true&sc=E&ac={num_adults}'
+        search_link = f'https://www.onetwotrip.com/ru/f/search/{depart_date}{origin_city_code}{dest_city_code}{return_date}?s=true&sc=E&ac={num_adults}&tr={num_tranship}'
         price = get_flight_price(search_link)
         send_result(or_city=record[-2], des_city=record[-1], dep_date=record[3], ret_date=record[4],
                     price=price, telegram_user=telegram_user)
