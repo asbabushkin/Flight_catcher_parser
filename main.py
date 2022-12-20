@@ -4,6 +4,7 @@ Implemented using telethon & schedule
 import os
 import time
 import psycopg2 as ps2
+import requests
 import schedule
 from fake_useragent import UserAgent
 # from selenium import webdriver
@@ -43,6 +44,7 @@ def get_data(db_connection, table):
     return cursor.fetchall()
 
 
+
 def delete_depart_date_expired_records(db_connection, table, archive):
     cursor = db_connection.cursor()
     cursor.execute(
@@ -62,7 +64,99 @@ def delete_old_records(db_connection, table, archive):
                    {"table_name": AsIs(table)})
 
 
-def get_flight_price(url):
+
+def get_flight_price_json(url, depart_date, origin_city_code, dest_city_code, return_date, tranship_limit):
+    print(url)
+    params = {
+        'route': f'{depart_date}{origin_city_code}{dest_city_code}{return_date}',
+        'ad': 1,
+        'cn': 0,
+        'in': 0,
+        'showDeeplink': 'false',
+        'cs': 'E',
+        'source': 'yandex_direct',
+        'priceIncludeBaggage': 'true',
+        'noClearNoBags': 'true',
+        'noMix': 'true',
+        'srcmarker': 'airlines_airport_desk_all_agency1_cpa_k36332661070',
+        'cryptoTripsVersion': 61,
+        'doNotMap': 'true',
+    }
+    all_flights_data = requests.get(url=url, params=params).json()
+    # filter on transhipmentts limit
+    transport_var_filtered = []
+    for item in all_flights_data['transportationVariants']:
+        if len(all_flights_data['transportationVariants'][item]['tripRefs']) <= tranship_limit + 1:
+            transport_var_filtered.append(item)
+    print(transport_var_filtered)
+
+    # getting best price
+    transp_variant_prices = {}
+    for item in all_flights_data['prices']:
+        if all_flights_data['prices'][item]['transportationVariantIds'][0] in transport_var_filtered:
+            transp_variant_prices[all_flights_data['prices'][item]['transportationVariantIds'][0]] = all_flights_data['prices'][item]['totalAmount']
+    print('Transportation variant prices prices:', transp_variant_prices)
+
+    cheapest_transport_var_id = []
+    best_price = min(transp_variant_prices.values())
+    print(f'Best price: {best_price}')
+    for key, value in transp_variant_prices.items():
+        if value == best_price:
+            cheapest_transport_var_id.append(key)
+
+    print(f'Cheapest transhipment variant id: {cheapest_transport_var_id}')
+
+    best_transp_variants = []
+    for item in all_flights_data['transportationVariants']:
+        for transp_id in cheapest_transport_var_id:
+            if item == transp_id:
+                trip_ids = []
+                for i in range(len(all_flights_data['transportationVariants'][item]['tripRefs'])):
+                    trip_ids.append(all_flights_data['transportationVariants'][item]['tripRefs'][i]['tripId'])
+                best_transp_variants.append([all_flights_data['transportationVariants'][item]['totalJourneyTimeMinutes'],
+                                 trip_ids])
+    print(f'Best transportation trips and time: {best_transp_variants}')
+    best_flights_info = []
+    for trip in best_transp_variants:
+        if len(trip[1]) == 1:
+            flight_info = {
+                'depart_date_time': all_flights_data['trips'][trip[1][0]]['startDateTime'],
+                'arrive_date_time': all_flights_data['trips'][trip[1][0]]['endDateTime'],
+                'carrier': all_flights_data['trips'][trip[1][0]]['carrier'],
+                'flight_number': all_flights_data['trips'][trip[1][0]]['carrierTripNumber'],
+                'orig_city': all_flights_data['trips'][trip[1][0]]['from'],
+                'dest_city': all_flights_data['trips'][trip[1][0]]['to'],
+                'num_tranship': 0,
+                'total_flight_time': trip[0],
+            }
+            best_flights_info.append(flight_info)
+            print(f'Best flights info: {best_flights_info}')
+
+        else:
+            for i in range(len(trip[1])):
+                flight_info = {
+                    'depart_date_time': all_flights_data['trips'][trip[1][0]]['startDateTime'],
+                    'arrive_date_time': all_flights_data['trips'][trip[1][-1]]['endDateTime'],
+                    'carrier': all_flights_data['trips'][trip[1][0]]['carrier'],
+                    'flight_number': all_flights_data['trips'][trip[1][0]]['carrierTripNumber'],
+                    'orig_city': all_flights_data['trips'][trip[1][0]]['from'],
+                    'dest_city': all_flights_data['trips'][trip[1][-1]]['to'],
+                    'num_tranship': len(trip[1])-1,
+                    'tranship_cities': [all_flights_data['trips'][trip[1][i]]['to'] for i in range(len(trip[1])-1)],
+                    'total_flight_time': trip[0],
+                }
+                best_flights_info.append(flight_info)
+            print(f'Best flights info: {best_flights_info}')
+    return best_flights_info
+
+
+
+
+
+
+
+
+def get_flight_price_selenium(url):
     proxy_list = os.getenv('proxy_list')[1:-1].split(', ')
     proxy_ip = choice(proxy_list)
     ua = UserAgent()
@@ -77,9 +171,6 @@ def get_flight_price(url):
     opts.add_argument('--headless')
 
     with webdriver.Chrome(seleniumwire_options=options, options=opts) as browser:
-        #        browser.get('https://httpbin.org/user-agent')
-        ##        time.sleep(5)
-        print('selenium',  url)
         browser.get(url)
         try:
             if WebDriverWait(browser, 20, poll_frequency=0.5).until(
@@ -88,7 +179,6 @@ def get_flight_price(url):
                 return div.find_elements(By.CLASS_NAME, '_4-iO8')[0].text
         except TimeoutException:
             return False
-
 
 
 def send_result(or_city, des_city, dep_date, ret_date, price, telegram_user):
@@ -135,16 +225,19 @@ def main():
             if i['city_rus'] == record[2]:
                 dest_city_code = i['code_eng']
                 break
-        num_tranship = record[3]
+        tranship_limit = record[3]
         num_adults = record[6]
         telegram_user = record[11]
         print(telegram_user)
-        search_link = f'https://www.onetwotrip.com/ru/f/search/{depart_date}{origin_city_code}{dest_city_code}{return_date}?s=true&sc=E&ac={num_adults}&tr={num_tranship}'
-        print(search_link)
-        price = get_flight_price(search_link)
-        send_result(or_city=record[1], des_city=record[2], dep_date=record[4], ret_date=record[5],
-                    price=price, telegram_user=telegram_user)
+        #search_link = f'https://www.onetwotrip.com/ru/f/search/{depart_date}{origin_city_code}{dest_city_code}{return_date}?s=true&sc=E&ac={num_adults}&tr={tranship_limit}'
+        search_link_json = f'https://www.onetwotrip.com/_avia-search-proxy/search/v3'
+        #print(search_link)
+        #price = get_flight_price_selenium(search_link)
+        price = get_flight_price_json(search_link_json, depart_date, origin_city_code, dest_city_code, return_date, tranship_limit)
+        #send_result(or_city=record[1], des_city=record[2], dep_date=record[4], ret_date=record[5], price=price, telegram_user=telegram_user)
     return True
+
+
 
 
 if __name__ == '__main__':
