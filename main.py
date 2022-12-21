@@ -1,6 +1,7 @@
 """
 Implemented using telethon & schedule
 """
+import http.client
 import os
 import time
 import psycopg2 as ps2
@@ -58,16 +59,16 @@ def delete_old_records(db_connection, table, archive):
 
 
 def get_flight_data(url, depart_date, origin_city_code, dest_city_code, return_date):
-    print(url)
-    # ua = UserAgent()
+    ua = UserAgent()
     my_headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+        'User-Agent': ua.random,
+    }
 
     proxy_list = os.getenv('proxy_list')[1:-1].split(', ')
     proxy_ip = choice(proxy_list)
     my_proxies = {
         'http': f"http://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:{os.getenv('http_port')}",
-        'https': f"https://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:{os.getenv('http_port')}"
+        #'https': f"https://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:{os.getenv('http_port')}"
     }
 
     params = {
@@ -85,7 +86,8 @@ def get_flight_data(url, depart_date, origin_city_code, dest_city_code, return_d
         'cryptoTripsVersion': 61,
         'doNotMap': 'true',
     }
-    all_flights_data = requests.get(url=url, params=params).json()
+    #print("Страница запроса с IP:", requests.get("http://icanhazip.com", proxies=my_proxies).text.strip())
+    all_flights_data = requests.get(url=url, params=params, proxies=my_proxies, headers=my_headers).json()
     return all_flights_data
 
 
