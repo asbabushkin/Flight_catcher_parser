@@ -129,6 +129,7 @@ def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):
 def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price):
     best_flights_info = []
     for trip in cheapest_transp_variants:
+        print(f'trip {trip}')
         if len(trip[1]) == 1:
             flight_info = {
                 'price': best_price,
@@ -143,20 +144,24 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
             }
             best_flights_info.append(flight_info)
         else:
-            for i in range(len(trip[1])):
-                flight_info = {
-                    'price': best_price,
-                    'depart_date_time': all_flights_data['trips'][trip[1][0]]['startDateTime'],
-                    'arrive_date_time': all_flights_data['trips'][trip[1][-1]]['endDateTime'],
-                    'carrier': all_flights_data['trips'][trip[1][0]]['carrier'],
-                    'flight_number': all_flights_data['trips'][trip[1][0]]['carrierTripNumber'],
-                    'orig_city': all_flights_data['trips'][trip[1][0]]['from'],
-                    'dest_city': all_flights_data['trips'][trip[1][-1]]['to'],
-                    'num_tranship': len(trip[1]) - 1,
-                    'tranship_cities': [all_flights_data['trips'][trip[1][i]]['to'] for i in range(len(trip[1]) - 1)],
-                    'total_flight_time': trip[0],
-                }
-                best_flights_info.append(flight_info)
+            tranship_cities = []
+            flight_info = {
+                'price': best_price,
+                'depart_date_time': all_flights_data['trips'][trip[1][0]]['startDateTime'],
+                'arrive_date_time': all_flights_data['trips'][trip[1][-1]]['endDateTime'],
+                'carrier': all_flights_data['trips'][trip[1][0]]['carrier'],
+                'flight_number': all_flights_data['trips'][trip[1][0]]['carrierTripNumber'],
+                'orig_city': all_flights_data['trips'][trip[1][0]]['from'],
+                'dest_city': all_flights_data['trips'][trip[1][-1]]['to'],
+                'num_tranship': len(trip[1]) - 1,
+                'tranship_cities': [all_flights_data['trips'][trip[1][i]]['to'] for i in range(len(trip[1]) - 1)],
+                'total_flight_time': trip[0],
+            }
+
+            for i in range(len(trip[1])-1):
+                tranship_cities.append(all_flights_data['trips'][trip[1][i]]['to'])
+            flight_info['tranship_cities'] = tranship_cities
+            best_flights_info.append(flight_info)
     return best_flights_info
 
 
