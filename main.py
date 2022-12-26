@@ -88,7 +88,7 @@ def get_flight_data(url, depart_date, origin_city_code, dest_city_code, return_d
     }
     # print("Страница запроса с IP:", requests.get("http://icanhazip.com", proxies=my_proxies).text.strip())
     all_flights_data = requests.get(url=url, params=params, proxies=my_proxies, headers=my_headers).json()
-
+    #print(f'Got all_flights_data: {all_flights_data} ')
     return all_flights_data
 
 
@@ -97,7 +97,7 @@ def tranship_limit_filter(all_flights_data, tranship_limit):
     for item in all_flights_data['transportationVariants']:
         if len(all_flights_data['transportationVariants'][item]['tripRefs']) <= tranship_limit + 1:
             transport_variants_tranship_limit_filtered.append(item)
-    print(f'transport_variants_tranship_limit_filtered: {transport_variants_tranship_limit_filtered}')
+   # print(f'Transportation variants filtered according to transhipments limit (tranship_limit_filter()): {transport_variants_tranship_limit_filtered}')
     return transport_variants_tranship_limit_filtered
 
 
@@ -107,7 +107,7 @@ def round_flights_filter(all_flights_data):
         if len(all_flights_data['prices'][item]['transportationVariantIds']) == 2:
             transport_variants_round_flight_filtered.append(
                 all_flights_data['prices'][item]['transportationVariantIds'])
-    print(f'transport_variants_round_flight_filtered: {transport_variants_round_flight_filtered}')
+  #  print(f'Transportation variants filtered according to round flight condition (round_flights_filter()): {transport_variants_round_flight_filtered}')
     return transport_variants_round_flight_filtered
 
 
@@ -125,18 +125,18 @@ def get_transport_variant_prices(all_flights_data, transport_var_filtered):
                     transp_variant_prices[tuple(all_flights_data['prices'][item]['transportationVariantIds'])] = \
                         all_flights_data['prices'][item]['totalAmount']
                     continue
-    print(f'transp_variant_prices: {transp_variant_prices}')
+#    print(f'Transportation variant prices (get_transport_variant_prices): {transp_variant_prices}')
     return transp_variant_prices
 
 
-def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):
+def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):   
     best_price = min(transp_variant_prices.values())
-    print(f'best_price: {best_price}')
+    #print(f'best_price: {best_price}')
     cheapest_transport_var_id = []
     for key, value in transp_variant_prices.items():
         if value == best_price:
             cheapest_transport_var_id.append(key)
-    print(f'cheapest_transport_var_id: {cheapest_transport_var_id}')
+    #print(f'cheapest_transport_var_id: {cheapest_transport_var_id}')
     cheapest_transp_variants = []
     for transp_id in cheapest_transport_var_id:
         for item in all_flights_data['transportationVariants']:
@@ -172,21 +172,23 @@ def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):
                 # cheapest_transp_variants.append(
                 #     [all_flights_data['transportationVariants'][item]['totalJourneyTimeMinutes'],
                 #      trip_ids])
-    print(f'cheapest_transp_variants: {cheapest_transp_variants}')
+  #  print(f'Cheapest transportation variants (get_cheapest_transport_variants()): {cheapest_transp_variants}')
+  #  print(f'Best price (get_cheapest_transport_variants(): {best_price}')
     return cheapest_transp_variants, best_price
 
 
 def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price, return_date):
-    print(f'return_date: {return_date}')
+    #print(f'return_date: {return_date}')
     if return_date is None:
         # one way flight
-        print('return date is none')
+    #    print('return date is none')
         best_flights_info = []
         for trip in cheapest_transp_variants:
-            print(f'trip {trip}')
+    #        print(f'trip {trip}')
             if len(trip[1]) == 1:
                 # no transhipments one way flight DONE!
                 flight_info = {
+                    'flight_type': 'one way',
                     'price': best_price,
                     'depart_date_time': all_flights_data['trips'][trip[1][0]]['startDateTime'],
                     'arrive_date_time': all_flights_data['trips'][trip[1][0]]['endDateTime'],
@@ -201,6 +203,7 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
             else:
                 # one way flight with transhipments DONE!
                 flight_info = {
+                    'flight_type': 'one way',
                     'price': best_price,
                     'depart_date_time': all_flights_data['trips'][trip[1][0]]['startDateTime'],
                     'arrive_date_time': all_flights_data['trips'][trip[1][-1]]['endDateTime'],
@@ -217,14 +220,15 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
 
     # round trip
     else:
-        print('round trip')
+    #    print('round trip')
         best_flights_info = []
         for trip in cheapest_transp_variants:
-            print(f'trip {trip}')
+    #        print(f'trip {trip}')
             best_flight_i_info = []
             if len(trip[1][0][1]) == 1:
                 # round trip forward flight no transhipments
                 first_flight_info = {
+                    'flight_type': 'round flight',
                     'price': best_price,
                     'depart_date_time': all_flights_data['trips'][trip[1][0][1][0]]['startDateTime'],
                     'arrive_date_time': all_flights_data['trips'][trip[1][0][1][-1]]['endDateTime'],
@@ -239,6 +243,7 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
             else:
                 # round trip forward flight with transhipments
                 first_flight_info = {
+                    'flight_type': 'round flight',
                     'price': best_price,
                     'depart_date_time': all_flights_data['trips'][trip[1][0][1][0]]['startDateTime'],
                     'arrive_date_time': all_flights_data['trips'][trip[1][0][1][-1]]['endDateTime'],
@@ -256,6 +261,7 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
             if len(trip[1][1][1]) == 1:
                 # round trip back flight no transhipments
                 back_flight_info = {
+                    'flight_type': 'round flight',
                     'price': best_price,
                     'depart_date_time': all_flights_data['trips'][trip[1][1][1][0]]['startDateTime'],
                     'arrive_date_time': all_flights_data['trips'][trip[1][1][1][-1]]['endDateTime'],
@@ -271,6 +277,7 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
             else:
                 # round trip back flight with transhipments
                 back_flight_info = {
+                    'flight_type': 'round flight',
                     'price': best_price,
                     'depart_date_time': all_flights_data['trips'][trip[1][1][1][0]]['startDateTime'],
                     'arrive_date_time': all_flights_data['trips'][trip[1][1][1][-1]]['endDateTime'],
@@ -286,37 +293,46 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
                 best_flight_i_info.append(back_flight_info)
             best_flights_info.append(best_flight_i_info)
 
-        for i in best_flights_info:
-            print(f'beat flight: {i}')
-        # print(f'best_flights_info: {best_flights_info}')
+        # for i in best_flights_info:
+        #     print(f'beat flight: {i}')
+        #print(f'Best flights info (get_best_flights_info): {best_flights_info}')
     return best_flights_info
 
-
-def send_result(or_city, des_city, dep_date, ret_date, price, telegram_user, tranship_limit):
-    if not price:
-        print(f'Перелет {or_city} - {des_city} с указанными параметрами не найден.')
-        with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
-            client.send_message(telegram_user,
-                                message=f'Перелет {or_city} - {des_city}\n с указанными параметрами не найден.')
-        return 'Flight not found'
-    else:
-
-        # round flight
-        if ret_date is not None:
-            # no transhipments round fight
-            if tranship_limit == 0:
-                print(f'Перелет {or_city} - {des_city} {dep_date} - {ret_date} цена {price} руб.')
-                with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')),
-                                    os.getenv('TELEGRAM_HASH')) as client:
-                    client.send_message(telegram_user,
-                                        message=f'Перелет {or_city} - {des_city}\nвылет {dep_date}\nвозвращение {ret_date}\nцена {price} руб.')
-            return 'Round flight'
-        else:
-            print(f'Перелет {or_city} - {des_city} вылет {dep_date} цена {price} руб.')
+def send_result(best_flights_info, telegram_user):
+    if best_flights_info[0]['flight_type'] == 'one way' or best_flights_info[0][0]['flight_type'] == 'one way':
+        for i in range(len(best_flights_info)):
             with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
-                client.send_message(telegram_user,
-                                    message=f'Перелет {or_city} - {des_city}\nвылет {dep_date}\nцена {price} руб.')
-            return 'Oneway flight'
+                client.send_message(telegram_user, message=f'Перелет {best_flights_info[i]["orig_city"]} - {best_flights_info[i]["dest_city"]} цена {best_flights_info[i]["price"]} руб.: \nавиакомпания {best_flights_info[i]["carrier"]} рейс № {best_flights_info[i]["flight_number"]}\nвылет: {best_flights_info[i]["depart_date_time"]} прибытие: {best_flights_info[i]["arrive_date_time"]} пересадки: {str(*best_flights_info[i]["tranship_cities"]) if best_flights_info[i]["num_tranship"] != 0 else "нет"}\nпродолжительность {(best_flights_info[i]["total_flight_time"])//60} часов {(best_flights_info[i]["total_flight_time"])%60} минут')
+    elif best_flights_info[0]['flight_type'] == 'round flight' or best_flights_info[0][0][0]['flight_type'] == 'round flight':
+
+
+
+
+#def send_result(or_city, des_city, dep_date, ret_date, price, telegram_user, tranship_limit):
+    # if not price:
+    #     print(f'Перелет {or_city} - {des_city} с указанными параметрами не найден.')
+    #     with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
+    #         client.send_message(telegram_user,
+    #                             message=f'Перелет {or_city} - {des_city}\n с указанными параметрами не найден.')
+    #     return 'Flight not found'
+    # else:
+    #
+    #     # round flight
+    #     if ret_date is not None:
+    #         # no transhipments round fight
+    #         if tranship_limit == 0:
+    #             print(f'Перелет {or_city} - {des_city} {dep_date} - {ret_date} цена {price} руб.')
+    #             with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')),
+    #                                 os.getenv('TELEGRAM_HASH')) as client:
+    #                 client.send_message(telegram_user,
+    #                                     message=f'Перелет {or_city} - {des_city}\nвылет {dep_date}\nвозвращение {ret_date}\nцена {price} руб.')
+    #         return 'Round flight'
+    #     else:
+    #         print(f'Перелет {or_city} - {des_city} вылет {dep_date} цена {price} руб.')
+    #         with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
+    #             client.send_message(telegram_user,
+    #                                 message=f'Перелет {or_city} - {des_city}\nвылет {dep_date}\nцена {price} руб.')
+    #         return 'Oneway flight'
 
 
 def main():
@@ -336,6 +352,7 @@ def main():
         for i in city_codes:
             if i['city_rus'] == record[1]:
                 origin_city_code = i['code_eng']
+               # print(f'City code: {origin_city_code}')
                 break
         for i in city_codes:
             if i['city_rus'] == record[2]:
@@ -346,7 +363,7 @@ def main():
         telegram_user = record[11]
         search_link_json = f'https://www.onetwotrip.com/_avia-search-proxy/search/v3'
         print(
-            f'Перелет {record[1]}-{record[2]} вылет: {depart_date} возвращение: {return_date} пересадок: {tranship_limit}')
+            f'Перелет {record[1]}-{record[2]} вылет: {depart_date} возвращение: {return_date} пересадок не более: {tranship_limit}')
         all_flights_data = get_flight_data(search_link_json, depart_date, origin_city_code, dest_city_code, return_date)
         transport_var_tranship_limit_filtered = tranship_limit_filter(all_flights_data, tranship_limit)
 
@@ -356,18 +373,21 @@ def main():
             for i in round_flights:
                 if i[0] in transport_var_tranship_limit_filtered and i[1] in transport_var_tranship_limit_filtered:
                     transport_var_filtered.append(i)
-            print(f'transport_var_filtered: {transport_var_filtered}')
+            #print(f'transport_var_filtered: {transport_var_filtered}')
         else:
             transport_var_filtered = transport_var_tranship_limit_filtered
-
+        #print(f'Transportation variants filtered (main()): {transport_var_filtered}')
         transp_variant_prices = get_transport_variant_prices(all_flights_data, transport_var_filtered)
         cheapest_transp_variants, best_price = get_cheapest_transport_variants(all_flights_data, transp_variant_prices)
         best_flights_info = get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price, return_date)
-        print(best_flights_info)
-        # for i in range(len(best_flights_info)):
-        #     send_result(or_city=record[1], des_city=record[2], dep_date=best_flights_info[i]['depart_date_time'],
-        #                 ret_date=best_flights_info[i]['arrive_date_time'], price=best_flights_info[i]['price'],
-        #                 telegram_user=telegram_user, tranship_limit=tranship_limit)
+        print(f'Best flights info: {best_flights_info}')
+        print('')
+        #send_result(best_flights_info, telegram_user)
+
+
+            # send_result(or_city=record[1], des_city=record[2], dep_date=best_flights_info[i]['depart_date_time'],
+            #             ret_date=best_flights_info[i]['arrive_date_time'], price=best_flights_info[i]['price'],
+            #             telegram_user=telegram_user, tranship_limit=tranship_limit)
     return True
 
 
