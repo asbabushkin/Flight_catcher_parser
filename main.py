@@ -125,18 +125,18 @@ def get_transport_variant_prices(all_flights_data, transport_var_filtered):
                     transp_variant_prices[tuple(all_flights_data['prices'][item]['transportationVariantIds'])] = \
                         all_flights_data['prices'][item]['totalAmount']
                     continue
-    #    print(f'Transportation variant prices (get_transport_variant_prices): {transp_variant_prices}')
+    print(f'Transportation variant prices (get_transport_variant_prices): {transp_variant_prices}')
     return transp_variant_prices
 
 
 def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):
     best_price = min(transp_variant_prices.values())
-    # print(f'best_price: {best_price}')
+    print(f'best_price: {best_price}')
     cheapest_transport_var_id = []
     for key, value in transp_variant_prices.items():
         if value == best_price:
             cheapest_transport_var_id.append(key)
-    # print(f'cheapest_transport_var_id: {cheapest_transport_var_id}')
+    #print(f'cheapest_transport_var_id: {cheapest_transport_var_id}')
     cheapest_transp_variants = []
     for transp_id in cheapest_transport_var_id:
         for item in all_flights_data['transportationVariants']:
@@ -149,8 +149,7 @@ def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):
                         [all_flights_data['transportationVariants'][item]['totalJourneyTimeMinutes'],
                          trip_ids])
             elif isinstance(transp_id, tuple):
-                trip_ids = []
-                if item == transp_id[0]:
+                if transp_id[0] == item:
                     lst_forvard_way = []
                     for i in range(len(all_flights_data['transportationVariants'][item]['tripRefs'])):
                         lst_forvard_way.append(
@@ -158,14 +157,14 @@ def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):
                     lst_forvard_way_and_time = list(
                         [all_flights_data['transportationVariants'][item]['totalJourneyTimeMinutes'],
                          lst_forvard_way])
-
-                elif item == transp_id[1]:
-                    lst_back_way = []
-                    for i in range(len(all_flights_data['transportationVariants'][item]['tripRefs'])):
-                        lst_back_way.append(all_flights_data['transportationVariants'][item]['tripRefs'][i]['tripId'])
-                    lst_back_way_and_time = list(
-                        [all_flights_data['transportationVariants'][item]['totalJourneyTimeMinutes'],
-                         lst_back_way])
+                    for j in all_flights_data['transportationVariants']:
+                        if transp_id[1] == j:
+                            lst_back_way = []
+                            for i in range(len(all_flights_data['transportationVariants'][j]['tripRefs'])):
+                                lst_back_way.append(all_flights_data['transportationVariants'][j]['tripRefs'][i]['tripId'])
+                            lst_back_way_and_time = list(
+                                [all_flights_data['transportationVariants'][j]['totalJourneyTimeMinutes'],
+                                 lst_back_way])
                     cheapest_transp_variants.append([lst_forvard_way_and_time[0] + lst_back_way_and_time[0],
                                                      [lst_forvard_way_and_time, lst_back_way_and_time]])
                 # trip_ids = (lst_forvard_way_and_time, lst_back_way_and_time)
@@ -223,7 +222,7 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
         #    print('round trip')
         best_flights_info = []
         for trip in cheapest_transp_variants:
-            #        print(f'trip {trip}')
+            print(f'trip round flight {trip}')
             best_flight_i_info = []
             if len(trip[1][0][1]) == 1:
                 # round trip forward flight no transhipments
@@ -288,20 +287,17 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
                     'num_tranship': len(trip[1][1][1]) - 1,
                     'tranship_cities': [all_flights_data['trips'][trip[1][1][1][i]]['to'] for i in
                                         range(len(trip[1][1][1]) - 1)],
-                    'total_flight_time': trip[1][0][0],
+                    'total_flight_time': trip[1][1][0],
                 }
                 best_flight_i_info.append(back_flight_info)
             best_flights_info.append(best_flight_i_info)
 
-        # for i in best_flights_info:
-        #     print(f'beat flight: {i}')
-    # print(f'Best flights info (get_best_flights_info): {best_flights_info}')
     return best_flights_info
 
 
 def send_result(best_flights_info, telegram_user):
     if isinstance(best_flights_info[0], dict):
-       # if best_flights_info[0]['flight_type'] == 'one way':
+        # if best_flights_info[0]['flight_type'] == 'one way':
         for i in range(len(best_flights_info)):
             if best_flights_info[i]["num_tranship"] == 0:
                 with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')),
@@ -314,7 +310,7 @@ def send_result(best_flights_info, telegram_user):
                     client.send_message(telegram_user,
                                         message=f'Перелет {best_flights_info[i]["orig_city"]} - {best_flights_info[i]["dest_city"]} цена {best_flights_info[i]["price"]} руб.: \nавиакомпания {best_flights_info[i]["carrier"]} рейс № {best_flights_info[i]["flight_number"]}\nвылет: {best_flights_info[i]["depart_date_time"]} прибытие: {best_flights_info[i]["arrive_date_time"]} пересадки: {str(*best_flights_info[i]["tranship_cities"])}\nпродолжительность {(best_flights_info[i]["total_flight_time"]) // 60} ч. {(best_flights_info[i]["total_flight_time"]) % 60} мин.')
     elif isinstance(best_flights_info[0], list):
-    #elif best_flights_info[0][0]['flight_type'] == 'round flight':
+        # elif best_flights_info[0][0]['flight_type'] == 'round flight':
         for i in range(len(best_flights_info)):
             with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
                 client.send_message(telegram_user,
@@ -350,19 +346,21 @@ def main():
         print(
             f'Перелет {record[1]}-{record[2]} вылет: {depart_date} возвращение: {return_date} пересадок не более: {tranship_limit}')
         all_flights_data = get_flight_data(search_link_json, depart_date, origin_city_code, dest_city_code, return_date)
+        #print(f'All flights data: {all_flights_data}')
         transport_var_tranship_limit_filtered = tranship_limit_filter(all_flights_data, tranship_limit)
-
+        print()
         if return_date is not None:
             round_flights = round_flights_filter(all_flights_data)
             transport_var_filtered = []
             for i in round_flights:
                 if i[0] in transport_var_tranship_limit_filtered and i[1] in transport_var_tranship_limit_filtered:
                     transport_var_filtered.append(i)
-            # print(f'transport_var_filtered: {transport_var_filtered}')
+             #print(f'transport_var_filtered: {transport_var_filtered}')
         else:
             transport_var_filtered = transport_var_tranship_limit_filtered
-        # print(f'Transportation variants filtered (main()): {transport_var_filtered}')
+        #print(f'Transportation variants filtered (main()): {transport_var_filtered}')
         transp_variant_prices = get_transport_variant_prices(all_flights_data, transport_var_filtered)
+        #print(f'Transportation variant prices: {transp_variant_prices}')
         cheapest_transp_variants, best_price = get_cheapest_transport_variants(all_flights_data, transp_variant_prices)
         best_flights_info = get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price, return_date)
         print(f'Best flights info: {best_flights_info}')
