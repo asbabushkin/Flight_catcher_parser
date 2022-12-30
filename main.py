@@ -1,9 +1,7 @@
 """
 Implemented using telethon & schedule
 """
-
 import os
-import time
 import psycopg2 as ps2
 import requests
 import schedule
@@ -88,7 +86,10 @@ def get_flight_data(url, depart_date, origin_city_code, dest_city_code, return_d
     }
     # print("Страница запроса с IP:", requests.get("http://icanhazip.com", proxies=my_proxies).text.strip())
     all_flights_data = requests.get(url=url, params=params, proxies=my_proxies, headers=my_headers).json()
-    return all_flights_data
+    if len(all_flights_data['prices']) == 0:
+        return False
+    else:
+        return all_flights_data
 
 
 def tranship_limit_filter(all_flights_data, tranship_limit):
@@ -225,28 +226,34 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
             }
             best_flight_i_info.extend([first_flight_info, back_flight_info])
             best_flights_info.append(best_flight_i_info)
-
     return best_flights_info
 
 
-def send_result(best_flights_info, telegram_user):
-    if isinstance(best_flights_info[0], dict):
-        for i in range(len(best_flights_info)):
-            if best_flights_info[i]["num_tranship"] == 0:
+def send_result(best_flights_info, telegram_user, empty_data):
+    if empty_data:
+        with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
+            client.send_message(telegram_user, message=f'Перелет не найден.')
+        return False
+    else:
+        if isinstance(best_flights_info[0], dict):
+            for i in range(len(best_flights_info)):
+                if best_flights_info[i]["num_tranship"] == 0:
+                    with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')),
+                                        os.getenv('TELEGRAM_HASH')) as client:
+                        client.send_message(telegram_user,
+                                            message=f'Перелет {best_flights_info[i]["orig_city"]} - {best_flights_info[i]["dest_city"]} цена {best_flights_info[i]["price"]} руб.: \nавиакомпания {best_flights_info[i]["carrier"]} рейс № {best_flights_info[i]["flight_number"]}\nвылет: {best_flights_info[i]["depart_date_time"]} прибытие: {best_flights_info[i]["arrive_date_time"]}\nпродолжительность {(best_flights_info[i]["total_flight_time"]) // 60} ч. {(best_flights_info[i]["total_flight_time"]) % 60} мин.')
+                else:
+                    with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')),
+                                        os.getenv('TELEGRAM_HASH')) as client:
+                        client.send_message(telegram_user,
+                                            message=f'Перелет {best_flights_info[i]["orig_city"]} - {best_flights_info[i]["dest_city"]} цена {best_flights_info[i]["price"]} руб.: \nавиакомпания {best_flights_info[i]["carrier"]} рейс № {best_flights_info[i]["flight_number"]}\nвылет: {best_flights_info[i]["depart_date_time"]} прибытие: {best_flights_info[i]["arrive_date_time"]} пересадки: {str(*best_flights_info[i]["tranship_cities"])}\nпродолжительность {(best_flights_info[i]["total_flight_time"]) // 60} ч. {(best_flights_info[i]["total_flight_time"]) % 60} мин.')
+        elif isinstance(best_flights_info[0], list):
+            for i in range(len(best_flights_info)):
                 with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')),
                                     os.getenv('TELEGRAM_HASH')) as client:
                     client.send_message(telegram_user,
-                                        message=f'Перелет {best_flights_info[i]["orig_city"]} - {best_flights_info[i]["dest_city"]} цена {best_flights_info[i]["price"]} руб.: \nавиакомпания {best_flights_info[i]["carrier"]} рейс № {best_flights_info[i]["flight_number"]}\nвылет: {best_flights_info[i]["depart_date_time"]} прибытие: {best_flights_info[i]["arrive_date_time"]}\nпродолжительность {(best_flights_info[i]["total_flight_time"]) // 60} ч. {(best_flights_info[i]["total_flight_time"]) % 60} мин.')
-            else:
-                with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')),
-                                    os.getenv('TELEGRAM_HASH')) as client:
-                    client.send_message(telegram_user,
-                                        message=f'Перелет {best_flights_info[i]["orig_city"]} - {best_flights_info[i]["dest_city"]} цена {best_flights_info[i]["price"]} руб.: \nавиакомпания {best_flights_info[i]["carrier"]} рейс № {best_flights_info[i]["flight_number"]}\nвылет: {best_flights_info[i]["depart_date_time"]} прибытие: {best_flights_info[i]["arrive_date_time"]} пересадки: {str(*best_flights_info[i]["tranship_cities"])}\nпродолжительность {(best_flights_info[i]["total_flight_time"]) // 60} ч. {(best_flights_info[i]["total_flight_time"]) % 60} мин.')
-    elif isinstance(best_flights_info[0], list):
-        for i in range(len(best_flights_info)):
-            with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
-                client.send_message(telegram_user,
-                                    message=f'Перелет {best_flights_info[i][0]["orig_city"]} - {best_flights_info[i][0]["dest_city"]} - {best_flights_info[i][0]["orig_city"]} цена {best_flights_info[i][0]["price"]} руб.:\nТуда:\nавиакомпания {best_flights_info[i][0]["carrier"]} рейс № {best_flights_info[i][0]["flight_number"]}\nвылет: {best_flights_info[i][0]["depart_date_time"]} прибытие: {best_flights_info[i][0]["arrive_date_time"]} пересадки: {str(*best_flights_info[i][0]["tranship_cities"]) if best_flights_info[i][0]["num_tranship"] != 0 else "нет"}\nпродолжительность {(best_flights_info[i][0]["total_flight_time"]) // 60} ч. {(best_flights_info[i][0]["total_flight_time"]) % 60} мин.\nНазад:\nавиакомпания {best_flights_info[i][1]["carrier"]} рейс № {best_flights_info[i][1]["flight_number"]}\nвылет: {best_flights_info[i][1]["depart_date_time"]} прибытие: {best_flights_info[i][1]["arrive_date_time"]} пересадки: {str(*best_flights_info[i][1]["tranship_cities"]) if best_flights_info[i][1]["num_tranship"] != 0 else "нет"}\nпродолжительность {(best_flights_info[i][1]["total_flight_time"]) // 60} ч. {(best_flights_info[i][1]["total_flight_time"]) % 60} мин.')
+                                        message=f'Перелет {best_flights_info[i][0]["orig_city"]} - {best_flights_info[i][0]["dest_city"]} - {best_flights_info[i][0]["orig_city"]} цена {best_flights_info[i][0]["price"]} руб.:\nТуда:\nавиакомпания {best_flights_info[i][0]["carrier"]} рейс № {best_flights_info[i][0]["flight_number"]}\nвылет: {best_flights_info[i][0]["depart_date_time"]} прибытие: {best_flights_info[i][0]["arrive_date_time"]} пересадки: {str(*best_flights_info[i][0]["tranship_cities"]) if best_flights_info[i][0]["num_tranship"] != 0 else "нет"}\nпродолжительность {(best_flights_info[i][0]["total_flight_time"]) // 60} ч. {(best_flights_info[i][0]["total_flight_time"]) % 60} мин.\nНазад:\nавиакомпания {best_flights_info[i][1]["carrier"]} рейс № {best_flights_info[i][1]["flight_number"]}\nвылет: {best_flights_info[i][1]["depart_date_time"]} прибытие: {best_flights_info[i][1]["arrive_date_time"]} пересадки: {str(*best_flights_info[i][1]["tranship_cities"]) if best_flights_info[i][1]["num_tranship"] != 0 else "нет"}\nпродолжительность {(best_flights_info[i][1]["total_flight_time"]) // 60} ч. {(best_flights_info[i][1]["total_flight_time"]) % 60} мин.')
+        return True
 
 
 def main():
@@ -276,6 +283,9 @@ def main():
         print(
             f'Перелет {record[1]}-{record[2]} вылет: {depart_date} возвращение: {return_date} пересадок не более: {tranship_limit}')
         all_flights_data = get_flight_data(search_link_json, depart_date, origin_city_code, dest_city_code, return_date)
+        if not all_flights_data:
+            send_result(None, telegram_user, empty_data=True)
+            continue
         transport_var_tranship_limit_filtered = tranship_limit_filter(all_flights_data, tranship_limit)
         if return_date is not None:
             round_flights = round_flights_filter(all_flights_data)
@@ -288,7 +298,7 @@ def main():
         transp_variant_prices = get_transport_variant_prices(all_flights_data, transport_var_filtered)
         cheapest_transp_variants, best_price = get_cheapest_transport_variants(all_flights_data, transp_variant_prices)
         best_flights_info = get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price, return_date)
-        send_result(best_flights_info, telegram_user)
+        send_result(best_flights_info, telegram_user, empty_data=False)
     return True
 
 
