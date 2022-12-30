@@ -36,6 +36,10 @@ def get_data(db_connection, table):
     cursor.execute("SELECT * FROM %(table_name)s;", {"table_name": AsIs(table)})
     return cursor.fetchall()
 
+def get_column_names(db_connection, table):
+    cursor = db_connection.cursor()
+    cursor.execute("SELECT * FROM %(table_name)s LIMIT 0;", {"table_name": AsIs(table)})
+    return [desc[0] for desc in cursor.description]
 
 def delete_depart_date_expired_records(db_connection, table, archive):
     cursor = db_connection.cursor()
@@ -229,10 +233,10 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
     return best_flights_info
 
 
-def send_result(best_flights_info, telegram_user, empty_data):
+def send_result(best_flights_info, request_data, empty_data):
     if empty_data:
         with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
-            client.send_message(telegram_user, message=f'Перелет не найден.')
+            client.send_message(request_data['telegr_acc'], message=f'Перелет {request_data["depart_city"]} - {request_data["dest_city"]} на дату {request_data["depart_date"]} не найден.')
         return False
     else:
         if isinstance(best_flights_info[0], dict):
@@ -240,18 +244,18 @@ def send_result(best_flights_info, telegram_user, empty_data):
                 if best_flights_info[i]["num_tranship"] == 0:
                     with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')),
                                         os.getenv('TELEGRAM_HASH')) as client:
-                        client.send_message(telegram_user,
+                        client.send_message(request_data['telegr_acc'],
                                             message=f'Перелет {best_flights_info[i]["orig_city"]} - {best_flights_info[i]["dest_city"]} цена {best_flights_info[i]["price"]} руб.: \nавиакомпания {best_flights_info[i]["carrier"]} рейс № {best_flights_info[i]["flight_number"]}\nвылет: {best_flights_info[i]["depart_date_time"]} прибытие: {best_flights_info[i]["arrive_date_time"]}\nпродолжительность {(best_flights_info[i]["total_flight_time"]) // 60} ч. {(best_flights_info[i]["total_flight_time"]) % 60} мин.')
                 else:
                     with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')),
                                         os.getenv('TELEGRAM_HASH')) as client:
-                        client.send_message(telegram_user,
+                        client.send_message(request_data['telegr_acc'],
                                             message=f'Перелет {best_flights_info[i]["orig_city"]} - {best_flights_info[i]["dest_city"]} цена {best_flights_info[i]["price"]} руб.: \nавиакомпания {best_flights_info[i]["carrier"]} рейс № {best_flights_info[i]["flight_number"]}\nвылет: {best_flights_info[i]["depart_date_time"]} прибытие: {best_flights_info[i]["arrive_date_time"]} пересадки: {str(*best_flights_info[i]["tranship_cities"])}\nпродолжительность {(best_flights_info[i]["total_flight_time"]) // 60} ч. {(best_flights_info[i]["total_flight_time"]) % 60} мин.')
         elif isinstance(best_flights_info[0], list):
             for i in range(len(best_flights_info)):
                 with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')),
                                     os.getenv('TELEGRAM_HASH')) as client:
-                    client.send_message(telegram_user,
+                    client.send_message(request_data['telegr_acc'],
                                         message=f'Перелет {best_flights_info[i][0]["orig_city"]} - {best_flights_info[i][0]["dest_city"]} - {best_flights_info[i][0]["orig_city"]} цена {best_flights_info[i][0]["price"]} руб.:\nТуда:\nавиакомпания {best_flights_info[i][0]["carrier"]} рейс № {best_flights_info[i][0]["flight_number"]}\nвылет: {best_flights_info[i][0]["depart_date_time"]} прибытие: {best_flights_info[i][0]["arrive_date_time"]} пересадки: {str(*best_flights_info[i][0]["tranship_cities"]) if best_flights_info[i][0]["num_tranship"] != 0 else "нет"}\nпродолжительность {(best_flights_info[i][0]["total_flight_time"]) // 60} ч. {(best_flights_info[i][0]["total_flight_time"]) % 60} мин.\nНазад:\nавиакомпания {best_flights_info[i][1]["carrier"]} рейс № {best_flights_info[i][1]["flight_number"]}\nвылет: {best_flights_info[i][1]["depart_date_time"]} прибытие: {best_flights_info[i][1]["arrive_date_time"]} пересадки: {str(*best_flights_info[i][1]["tranship_cities"]) if best_flights_info[i][1]["num_tranship"] != 0 else "нет"}\nпродолжительность {(best_flights_info[i][1]["total_flight_time"]) // 60} ч. {(best_flights_info[i][1]["total_flight_time"]) % 60} мин.')
         return True
 
@@ -262,11 +266,13 @@ def main():
         delete_old_records(conn, 'flight_search_search', 'flight_search_searcharchive')
         search_data = get_data(conn, 'flight_search_search')
         city_data = get_data(conn, 'flight_search_citycode')
+        colnames = get_column_names(conn, 'flight_search_search')
 
     keys = ['city_eng', 'city_rus', 'code_eng', 'code_rus']
     city_codes = [dict(zip(keys, city_data[c][1:])) for c in range(len(city_data))]
     for record in search_data:
         dest_city_code = origin_city_code = return_date = depart_date = num_adults = telegram_user = None
+        request_data = dict(zip(colnames, record))
         depart_date = str(record[4].day).rjust(2, '0') + str(record[4].month).rjust(2, '0')
         if record[5] is not None:
             return_date = str(record[5].day).rjust(2, '0') + str(record[5].month).rjust(2, '0')
@@ -284,7 +290,7 @@ def main():
             f'Перелет {record[1]}-{record[2]} вылет: {depart_date} возвращение: {return_date} пересадок не более: {tranship_limit}')
         all_flights_data = get_flight_data(search_link_json, depart_date, origin_city_code, dest_city_code, return_date)
         if not all_flights_data:
-            send_result(None, telegram_user, empty_data=True)
+            send_result(None, request_data, empty_data=True)
             continue
         transport_var_tranship_limit_filtered = tranship_limit_filter(all_flights_data, tranship_limit)
         if return_date is not None:
@@ -298,7 +304,7 @@ def main():
         transp_variant_prices = get_transport_variant_prices(all_flights_data, transport_var_filtered)
         cheapest_transp_variants, best_price = get_cheapest_transport_variants(all_flights_data, transp_variant_prices)
         best_flights_info = get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price, return_date)
-        send_result(best_flights_info, telegram_user, empty_data=False)
+        send_result(best_flights_info, request_data, empty_data=False)
     return True
 
 
