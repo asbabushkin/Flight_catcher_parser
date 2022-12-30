@@ -136,7 +136,7 @@ def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):
     for key, value in transp_variant_prices.items():
         if value == best_price:
             cheapest_transport_var_id.append(key)
-    #print(f'cheapest_transport_var_id: {cheapest_transport_var_id}')
+    # print(f'cheapest_transport_var_id: {cheapest_transport_var_id}')
     cheapest_transp_variants = []
     for transp_id in cheapest_transport_var_id:
         for item in all_flights_data['transportationVariants']:
@@ -161,7 +161,8 @@ def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):
                         if transp_id[1] == j:
                             lst_back_way = []
                             for i in range(len(all_flights_data['transportationVariants'][j]['tripRefs'])):
-                                lst_back_way.append(all_flights_data['transportationVariants'][j]['tripRefs'][i]['tripId'])
+                                lst_back_way.append(
+                                    all_flights_data['transportationVariants'][j]['tripRefs'][i]['tripId'])
                             lst_back_way_and_time = list(
                                 [all_flights_data['transportationVariants'][j]['totalJourneyTimeMinutes'],
                                  lst_back_way])
@@ -224,72 +225,40 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
         for trip in cheapest_transp_variants:
             print(f'trip round flight {trip}')
             best_flight_i_info = []
-            if len(trip[1][0][1]) == 1:
-                # round trip forward flight no transhipments
-                first_flight_info = {
-                    'flight_type': 'round flight',
-                    'price': best_price,
-                    'depart_date_time': all_flights_data['trips'][trip[1][0][1][0]]['startDateTime'],
-                    'arrive_date_time': all_flights_data['trips'][trip[1][0][1][-1]]['endDateTime'],
-                    'carrier': all_flights_data['trips'][trip[1][0][1][0]]['carrier'],
-                    'flight_number': all_flights_data['trips'][trip[1][0][1][0]]['carrierTripNumber'],
-                    'orig_city': all_flights_data['trips'][trip[1][0][1][0]]['from'],
-                    'dest_city': all_flights_data['trips'][trip[1][0][1][-1]]['to'],
-                    'num_tranship': len(trip[1][0][1]) - 1,
-                    'total_flight_time': trip[1][0][0],
-                }
-                best_flight_i_info.append(first_flight_info)
-            else:
-                # round trip forward flight with transhipments
-                first_flight_info = {
-                    'flight_type': 'round flight',
-                    'price': best_price,
-                    'depart_date_time': all_flights_data['trips'][trip[1][0][1][0]]['startDateTime'],
-                    'arrive_date_time': all_flights_data['trips'][trip[1][0][1][-1]]['endDateTime'],
-                    'carrier': all_flights_data['trips'][trip[1][0][1][0]]['carrier'],
-                    'flight_number': all_flights_data['trips'][trip[1][0][1][0]]['carrierTripNumber'],
-                    'orig_city': all_flights_data['trips'][trip[1][0][1][0]]['from'],
-                    'dest_city': all_flights_data['trips'][trip[1][0][1][-1]]['to'],
-                    'num_tranship': len(trip[1][0][1]) - 1,
-                    'tranship_cities': [all_flights_data['trips'][trip[1][0][1][i]]['to'] for i in
-                                        range(len(trip[1][0][1]) - 1)],
-                    'total_flight_time': trip[1][0][0],
-                }
-                best_flight_i_info.append(first_flight_info)
 
-            if len(trip[1][1][1]) == 1:
-                # round trip back flight no transhipments
-                back_flight_info = {
-                    'flight_type': 'round flight',
-                    'price': best_price,
-                    'depart_date_time': all_flights_data['trips'][trip[1][1][1][0]]['startDateTime'],
-                    'arrive_date_time': all_flights_data['trips'][trip[1][1][1][-1]]['endDateTime'],
-                    'carrier': all_flights_data['trips'][trip[1][1][1][0]]['carrier'],
-                    'flight_number': all_flights_data['trips'][trip[1][1][1][0]]['carrierTripNumber'],
-                    'orig_city': all_flights_data['trips'][trip[1][1][1][0]]['from'],
-                    'dest_city': all_flights_data['trips'][trip[1][1][1][-1]]['to'],
-                    'num_tranship': len(trip[1][1][1]) - 1,
-                    'total_flight_time': trip[1][1][0],
-                }
-                best_flight_i_info.append(back_flight_info)
+            # round trip forward flight
+            first_flight_info = {
+                'flight_type': 'round flight',
+                'price': best_price,
+                'depart_date_time': all_flights_data['trips'][trip[1][0][1][0]]['startDateTime'],
+                'arrive_date_time': all_flights_data['trips'][trip[1][0][1][-1]]['endDateTime'],
+                'carrier': all_flights_data['trips'][trip[1][0][1][0]]['carrier'],
+                'flight_number': all_flights_data['trips'][trip[1][0][1][0]]['carrierTripNumber'],
+                'orig_city': all_flights_data['trips'][trip[1][0][1][0]]['from'],
+                'dest_city': all_flights_data['trips'][trip[1][0][1][-1]]['to'],
+                'num_tranship': len(trip[1][0][1]) - 1,
+                'tranship_cities': None if len(trip[1][0][1]) == 1 else [
+                    all_flights_data['trips'][trip[1][0][1][i]]['to'] for i in range(len(trip[1][0][1]) - 1)],
+                'total_flight_time': trip[1][0][0],
+            }
 
-            else:
-                # round trip back flight with transhipments
-                back_flight_info = {
-                    'flight_type': 'round flight',
-                    'price': best_price,
-                    'depart_date_time': all_flights_data['trips'][trip[1][1][1][0]]['startDateTime'],
-                    'arrive_date_time': all_flights_data['trips'][trip[1][1][1][-1]]['endDateTime'],
-                    'carrier': all_flights_data['trips'][trip[1][1][1][0]]['carrier'],
-                    'flight_number': all_flights_data['trips'][trip[1][1][1][0]]['carrierTripNumber'],
-                    'orig_city': all_flights_data['trips'][trip[1][1][1][0]]['from'],
-                    'dest_city': all_flights_data['trips'][trip[1][1][1][-1]]['to'],
-                    'num_tranship': len(trip[1][1][1]) - 1,
-                    'tranship_cities': [all_flights_data['trips'][trip[1][1][1][i]]['to'] for i in
-                                        range(len(trip[1][1][1]) - 1)],
-                    'total_flight_time': trip[1][1][0],
-                }
-                best_flight_i_info.append(back_flight_info)
+            # round trip back flight
+            back_flight_info = {
+                'flight_type': 'round flight',
+                'price': best_price,
+                'depart_date_time': all_flights_data['trips'][trip[1][1][1][0]]['startDateTime'],
+                'arrive_date_time': all_flights_data['trips'][trip[1][1][1][-1]]['endDateTime'],
+                'carrier': all_flights_data['trips'][trip[1][1][1][0]]['carrier'],
+                'flight_number': all_flights_data['trips'][trip[1][1][1][0]]['carrierTripNumber'],
+                'orig_city': all_flights_data['trips'][trip[1][1][1][0]]['from'],
+                'dest_city': all_flights_data['trips'][trip[1][1][1][-1]]['to'],
+                'num_tranship': len(trip[1][1][1]) - 1,
+                'tranship_cities': None if len(trip[1][1][1]) == 1 else [
+                    all_flights_data['trips'][trip[1][1][1][i]]['to'] for i in range(len(trip[1][1][1]) - 1)],
+                'total_flight_time': trip[1][1][0],
+            }
+
+            best_flight_i_info.extend([first_flight_info, back_flight_info])
             best_flights_info.append(best_flight_i_info)
 
     return best_flights_info
@@ -346,7 +315,7 @@ def main():
         print(
             f'Перелет {record[1]}-{record[2]} вылет: {depart_date} возвращение: {return_date} пересадок не более: {tranship_limit}')
         all_flights_data = get_flight_data(search_link_json, depart_date, origin_city_code, dest_city_code, return_date)
-        #print(f'All flights data: {all_flights_data}')
+        # print(f'All flights data: {all_flights_data}')
         transport_var_tranship_limit_filtered = tranship_limit_filter(all_flights_data, tranship_limit)
         print()
         if return_date is not None:
@@ -355,12 +324,12 @@ def main():
             for i in round_flights:
                 if i[0] in transport_var_tranship_limit_filtered and i[1] in transport_var_tranship_limit_filtered:
                     transport_var_filtered.append(i)
-             #print(f'transport_var_filtered: {transport_var_filtered}')
+            # print(f'transport_var_filtered: {transport_var_filtered}')
         else:
             transport_var_filtered = transport_var_tranship_limit_filtered
-        #print(f'Transportation variants filtered (main()): {transport_var_filtered}')
+        # print(f'Transportation variants filtered (main()): {transport_var_filtered}')
         transp_variant_prices = get_transport_variant_prices(all_flights_data, transport_var_filtered)
-        #print(f'Transportation variant prices: {transp_variant_prices}')
+        # print(f'Transportation variant prices: {transp_variant_prices}')
         cheapest_transp_variants, best_price = get_cheapest_transport_variants(all_flights_data, transp_variant_prices)
         best_flights_info = get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price, return_date)
         print(f'Best flights info: {best_flights_info}')
