@@ -88,7 +88,6 @@ def get_flight_data(url, depart_date, origin_city_code, dest_city_code, return_d
     }
     # print("Страница запроса с IP:", requests.get("http://icanhazip.com", proxies=my_proxies).text.strip())
     all_flights_data = requests.get(url=url, params=params, proxies=my_proxies, headers=my_headers).json()
-    # print(f'Got all_flights_data: {all_flights_data} ')
     return all_flights_data
 
 
@@ -97,7 +96,6 @@ def tranship_limit_filter(all_flights_data, tranship_limit):
     for item in all_flights_data['transportationVariants']:
         if len(all_flights_data['transportationVariants'][item]['tripRefs']) <= tranship_limit + 1:
             transport_variants_tranship_limit_filtered.append(item)
-    # print(f'Transportation variants filtered according to transhipments limit (tranship_limit_filter()): {transport_variants_tranship_limit_filtered}')
     return transport_variants_tranship_limit_filtered
 
 
@@ -107,7 +105,6 @@ def round_flights_filter(all_flights_data):
         if len(all_flights_data['prices'][item]['transportationVariantIds']) == 2:
             transport_variants_round_flight_filtered.append(
                 all_flights_data['prices'][item]['transportationVariantIds'])
-    #  print(f'Transportation variants filtered according to round flight condition (round_flights_filter()): {transport_variants_round_flight_filtered}')
     return transport_variants_round_flight_filtered
 
 
@@ -125,7 +122,6 @@ def get_transport_variant_prices(all_flights_data, transport_var_filtered):
                     transp_variant_prices[tuple(all_flights_data['prices'][item]['transportationVariantIds'])] = \
                         all_flights_data['prices'][item]['totalAmount']
                     continue
-    print(f'Transportation variant prices (get_transport_variant_prices): {transp_variant_prices}')
     return transp_variant_prices
 
 
@@ -136,7 +132,6 @@ def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):
     for key, value in transp_variant_prices.items():
         if value == best_price:
             cheapest_transport_var_id.append(key)
-    # print(f'cheapest_transport_var_id: {cheapest_transport_var_id}')
     cheapest_transp_variants = []
     for transp_id in cheapest_transport_var_id:
         for item in all_flights_data['transportationVariants']:
@@ -168,18 +163,12 @@ def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):
                                  lst_back_way])
                     cheapest_transp_variants.append([lst_forvard_way_and_time[0] + lst_back_way_and_time[0],
                                                      [lst_forvard_way_and_time, lst_back_way_and_time]])
-                # trip_ids = (lst_forvard_way_and_time, lst_back_way_and_time)
-                # cheapest_transp_variants.append(
-                #     [all_flights_data['transportationVariants'][item]['totalJourneyTimeMinutes'],
-                #      trip_ids])
-    #  print(f'Cheapest transportation variants (get_cheapest_transport_variants()): {cheapest_transp_variants}')
-    #  print(f'Best price (get_cheapest_transport_variants(): {best_price}')
     return cheapest_transp_variants, best_price
 
 
 def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price, return_date):
     if return_date is None:
-# one way flight
+        # one way flight
         best_flights_info = []
         for trip in cheapest_transp_variants:
             flight_info = {
@@ -192,17 +181,18 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
                 'orig_city': all_flights_data['trips'][trip[1][0]]['from'],
                 'dest_city': all_flights_data['trips'][trip[1][-1]]['to'],
                 'num_tranship': len(trip[1]) - 1,
-                'tranship_cities': None if len(trip[1]) == 1 else [all_flights_data['trips'][trip[1][i]]['to'] for i in range(len(trip[1]) - 1)],
+                'tranship_cities': None if len(trip[1]) == 1 else [all_flights_data['trips'][trip[1][i]]['to'] for i in
+                                                                   range(len(trip[1]) - 1)],
                 'total_flight_time': trip[0],
             }
             best_flights_info.append(flight_info)
 
-# round trip
+    # round trip
     else:
         best_flights_info = []
         for trip in cheapest_transp_variants:
             best_flight_i_info = []
-# round trip forward flight
+            # round trip forward flight
             first_flight_info = {
                 'flight_type': 'round flight',
                 'price': best_price,
@@ -218,7 +208,7 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
                 'total_flight_time': trip[1][0][0],
             }
 
-# round trip back flight
+            # round trip back flight
             back_flight_info = {
                 'flight_type': 'round flight',
                 'price': best_price,
@@ -281,37 +271,24 @@ def main():
             if i['city_rus'] == record[2]:
                 dest_city_code = i['code_eng']
                 break
-        tranship_limit = record[3]
-        num_adults = record[6]
-        telegram_user = record[11]
+        tranship_limit, num_adults, telegram_user = record[3], record[6], record[11]
         search_link_json = f'https://www.onetwotrip.com/_avia-search-proxy/search/v3'
         print(
             f'Перелет {record[1]}-{record[2]} вылет: {depart_date} возвращение: {return_date} пересадок не более: {tranship_limit}')
         all_flights_data = get_flight_data(search_link_json, depart_date, origin_city_code, dest_city_code, return_date)
-        # print(f'All flights data: {all_flights_data}')
         transport_var_tranship_limit_filtered = tranship_limit_filter(all_flights_data, tranship_limit)
-        print()
         if return_date is not None:
             round_flights = round_flights_filter(all_flights_data)
             transport_var_filtered = []
             for i in round_flights:
                 if i[0] in transport_var_tranship_limit_filtered and i[1] in transport_var_tranship_limit_filtered:
                     transport_var_filtered.append(i)
-            # print(f'transport_var_filtered: {transport_var_filtered}')
         else:
             transport_var_filtered = transport_var_tranship_limit_filtered
-        # print(f'Transportation variants filtered (main()): {transport_var_filtered}')
         transp_variant_prices = get_transport_variant_prices(all_flights_data, transport_var_filtered)
-        # print(f'Transportation variant prices: {transp_variant_prices}')
         cheapest_transp_variants, best_price = get_cheapest_transport_variants(all_flights_data, transp_variant_prices)
         best_flights_info = get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price, return_date)
-        print(f'Best flights info: {best_flights_info}')
-        print('')
         send_result(best_flights_info, telegram_user)
-
-        # send_result(or_city=record[1], des_city=record[2], dep_date=best_flights_info[i]['depart_date_time'],
-        #             ret_date=best_flights_info[i]['arrive_date_time'], price=best_flights_info[i]['price'],
-        #             telegram_user=telegram_user, tranship_limit=tranship_limit)
     return True
 
 
