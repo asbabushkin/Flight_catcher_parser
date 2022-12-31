@@ -36,10 +36,12 @@ def get_data(db_connection, table):
     cursor.execute("SELECT * FROM %(table_name)s;", {"table_name": AsIs(table)})
     return cursor.fetchall()
 
+
 def get_column_names(db_connection, table):
     cursor = db_connection.cursor()
     cursor.execute("SELECT * FROM %(table_name)s LIMIT 0;", {"table_name": AsIs(table)})
     return [desc[0] for desc in cursor.description]
+
 
 def delete_depart_date_expired_records(db_connection, table, archive):
     cursor = db_connection.cursor()
@@ -60,7 +62,7 @@ def delete_old_records(db_connection, table, archive):
                    {"table_name": AsIs(table)})
 
 
-def get_flight_data(url, depart_date, origin_city_code, dest_city_code, return_date):
+def get_flight_data(url, request_data, city_codes):
     ua = UserAgent()
     my_headers = {
         'User-Agent': ua.random,
@@ -73,11 +75,22 @@ def get_flight_data(url, depart_date, origin_city_code, dest_city_code, return_d
         # 'https': f"https://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:{os.getenv('http_port')}"
     }
 
+    origin_city_code = dest_city_code = ''
+    for i in city_codes:
+        if i['city_rus'] == request_data['depart_city']:
+            origin_city_code = i['code_eng']
+            break
+
+    for i in city_codes:
+        if i['city_rus'] == request_data['dest_city']:
+            dest_city_code = i['code_eng']
+            break
+
     params = {
-        'route': f'{depart_date}{origin_city_code}{dest_city_code}{return_date}',
-        'ad': 1,
-        'cn': 0,
-        'in': 0,
+        'route': f'{str(request_data["depart_date"].day).rjust(2, "0") + str(request_data["depart_date"].month).rjust(2, "0")}{origin_city_code}{dest_city_code}{str(request_data["return_date"].day).rjust(2, "0") + str(request_data["return_date"].month).rjust(2, "0") if request_data["return_date"] is not None else ""}',
+        'ad': request_data["num_adults"],
+        'cn': request_data["num_children"],
+        'in': request_data["num_infants"],
         'showDeeplink': 'false',
         'cs': 'E',
         'source': 'yandex_direct',
@@ -91,7 +104,7 @@ def get_flight_data(url, depart_date, origin_city_code, dest_city_code, return_d
     # print("Страница запроса с IP:", requests.get("http://icanhazip.com", proxies=my_proxies).text.strip())
     all_flights_data = requests.get(url=url, params=params, proxies=my_proxies, headers=my_headers).json()
     if len(all_flights_data['prices']) == 0:
-        return False
+        return {}
     else:
         return all_flights_data
 
@@ -132,7 +145,6 @@ def get_transport_variant_prices(all_flights_data, transport_var_filtered):
 
 def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):
     best_price = min(transp_variant_prices.values())
-    print(f'best_price: {best_price}')
     cheapest_transport_var_id = []
     for key, value in transp_variant_prices.items():
         if value == best_price:
@@ -140,6 +152,7 @@ def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):
     cheapest_transp_variants = []
     for transp_id in cheapest_transport_var_id:
         for item in all_flights_data['transportationVariants']:
+            # one way flight
             if isinstance(transp_id, str):
                 if item == transp_id:
                     trip_ids = []
@@ -148,6 +161,7 @@ def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):
                     cheapest_transp_variants.append(
                         [all_flights_data['transportationVariants'][item]['totalJourneyTimeMinutes'],
                          trip_ids])
+            #round flight
             elif isinstance(transp_id, tuple):
                 if transp_id[0] == item:
                     lst_forvard_way = []
@@ -236,7 +250,8 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
 def send_result(best_flights_info, request_data, empty_data):
     if empty_data:
         with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
-            client.send_message(request_data['telegr_acc'], message=f'Перелет {request_data["depart_city"]} - {request_data["dest_city"]} на дату {request_data["depart_date"]} не найден.')
+            client.send_message(request_data['telegr_acc'],
+                                message=f'Перелет {request_data["depart_city"]} - {request_data["dest_city"]} на дату {request_data["depart_date"]} не найден.')
         return False
     else:
         if isinstance(best_flights_info[0], dict):
@@ -271,29 +286,17 @@ def main():
     keys = ['city_eng', 'city_rus', 'code_eng', 'code_rus']
     city_codes = [dict(zip(keys, city_data[c][1:])) for c in range(len(city_data))]
     for record in search_data:
-        dest_city_code = origin_city_code = return_date = depart_date = num_adults = telegram_user = None
         request_data = dict(zip(colnames, record))
-        depart_date = str(record[4].day).rjust(2, '0') + str(record[4].month).rjust(2, '0')
-        if record[5] is not None:
-            return_date = str(record[5].day).rjust(2, '0') + str(record[5].month).rjust(2, '0')
-        for i in city_codes:
-            if i['city_rus'] == record[1]:
-                origin_city_code = i['code_eng']
-                break
-        for i in city_codes:
-            if i['city_rus'] == record[2]:
-                dest_city_code = i['code_eng']
-                break
-        tranship_limit, num_adults, telegram_user = record[3], record[6], record[11]
+        tranship_limit = request_data['max_transhipments']
         search_link_json = f'https://www.onetwotrip.com/_avia-search-proxy/search/v3'
         print(
-            f'Перелет {record[1]}-{record[2]} вылет: {depart_date} возвращение: {return_date} пересадок не более: {tranship_limit}')
-        all_flights_data = get_flight_data(search_link_json, depart_date, origin_city_code, dest_city_code, return_date)
-        if not all_flights_data:
+            f'Перелет {request_data["depart_city"]}-{request_data["dest_city"]} вылет: {request_data["depart_date"]} возвращение: {request_data["return_date"]} пересадок не более: {tranship_limit}')
+        all_flights_data = get_flight_data(search_link_json, request_data, city_codes)
+        if len(all_flights_data) == 0:
             send_result(None, request_data, empty_data=True)
             continue
         transport_var_tranship_limit_filtered = tranship_limit_filter(all_flights_data, tranship_limit)
-        if return_date is not None:
+        if request_data['return_date'] is not None:
             round_flights = round_flights_filter(all_flights_data)
             transport_var_filtered = []
             for i in round_flights:
@@ -303,7 +306,8 @@ def main():
             transport_var_filtered = transport_var_tranship_limit_filtered
         transp_variant_prices = get_transport_variant_prices(all_flights_data, transport_var_filtered)
         cheapest_transp_variants, best_price = get_cheapest_transport_variants(all_flights_data, transp_variant_prices)
-        best_flights_info = get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price, return_date)
+        best_flights_info = get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price,
+                                                  request_data["return_date"])
         send_result(best_flights_info, request_data, empty_data=False)
     return True
 
