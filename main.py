@@ -43,7 +43,7 @@ def get_column_names(db_connection, table):
     return [desc[0] for desc in cursor.description]
 
 
-def delete_depart_date_expired_records(db_connection, table, archive):
+def del_dep_date_expired_rec(db_connection, table, archive):
     cursor = db_connection.cursor()
     cursor.execute(
         "INSERT INTO %(archive)s (old_id, depart_city, dest_city, max_transhipments, depart_date, return_date, num_adults, num_children, num_infants, luggage, search_init_date, telegr_acc, phone_num, email) SELECT * FROM %(table_name)s WHERE depart_date < CURRENT_DATE;",
@@ -53,7 +53,7 @@ def delete_depart_date_expired_records(db_connection, table, archive):
     return None
 
 
-def delete_old_records(db_connection, table, archive):
+def del_old_rec(db_connection, table, archive):
     cursor = db_connection.cursor()
     cursor.execute(
         "INSERT INTO %(archive)s (old_id, depart_city, dest_city, max_transhipments, depart_date, return_date, num_adults, num_children, num_infants, luggage, search_init_date, telegr_acc, phone_num, email) SELECT * FROM %(table_name)s WHERE EXTRACT(EPOCH FROM now() - search_init_date)/3600 > 72;",
@@ -109,7 +109,7 @@ def get_flight_data(url, request_data, city_codes):
         return all_flights_data
 
 
-def tranship_limit_filter(all_flights_data, tranship_limit):
+def tranship_lim_filt(all_flights_data, tranship_limit):
     transport_variants_tranship_limit_filtered = []
     for item in all_flights_data['transportationVariants']:
         if len(all_flights_data['transportationVariants'][item]['tripRefs']) <= tranship_limit + 1:
@@ -117,7 +117,7 @@ def tranship_limit_filter(all_flights_data, tranship_limit):
     return transport_variants_tranship_limit_filtered
 
 
-def round_flights_filter(all_flights_data):
+def filter_round_flights(all_flights_data):
     transport_variants_round_flight_filtered = []
     for item in all_flights_data['prices']:
         if len(all_flights_data['prices'][item]['transportationVariantIds']) == 2:
@@ -126,7 +126,7 @@ def round_flights_filter(all_flights_data):
     return transport_variants_round_flight_filtered
 
 
-def get_transport_variant_prices(all_flights_data, transport_var_filtered):
+def get_transp_var_prices(all_flights_data, transport_var_filtered):
     transp_variant_prices = {}
     for item in all_flights_data['prices']:
         if len(all_flights_data['prices'][item]['transportationVariantIds']) == 1:
@@ -143,7 +143,7 @@ def get_transport_variant_prices(all_flights_data, transport_var_filtered):
     return transp_variant_prices
 
 
-def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):
+def get_cheapest_transp_vars(all_flights_data, transp_variant_prices):
     best_price = min(transp_variant_prices.values())
     cheapest_transport_var_id = []
     for key, value in transp_variant_prices.items():
@@ -161,7 +161,7 @@ def get_cheapest_transport_variants(all_flights_data, transp_variant_prices):
                     cheapest_transp_variants.append(
                         [all_flights_data['transportationVariants'][item]['totalJourneyTimeMinutes'],
                          trip_ids])
-            #round flight
+            # round flight
             elif isinstance(transp_id, tuple):
                 if transp_id[0] == item:
                     lst_forvard_way = []
@@ -277,16 +277,16 @@ def send_result(best_flights_info, request_data, empty_data):
 
 def main():
     with set_connection() as conn:
-        delete_depart_date_expired_records(conn, 'flight_search_search', 'flight_search_searcharchive')
-        delete_old_records(conn, 'flight_search_search', 'flight_search_searcharchive')
+        del_dep_date_expired_rec(conn, 'flight_search_search', 'flight_search_searcharchive')
+        del_old_rec(conn, 'flight_search_search', 'flight_search_searcharchive')
         search_data = get_data(conn, 'flight_search_search')
         city_data = get_data(conn, 'flight_search_citycode')
-        colnames = get_column_names(conn, 'flight_search_search')
+        search_colnames = get_column_names(conn, 'flight_search_search')
+        citycode_colnames = get_column_names(conn, 'flight_search_citycode')
 
-    keys = ['city_eng', 'city_rus', 'code_eng', 'code_rus']
-    city_codes = [dict(zip(keys, city_data[c][1:])) for c in range(len(city_data))]
+    city_codes = [dict(zip(citycode_colnames, city_data[i])) for i in range(len(city_data))]
     for record in search_data:
-        request_data = dict(zip(colnames, record))
+        request_data = dict(zip(search_colnames, record))
         tranship_limit = request_data['max_transhipments']
         search_link_json = f'https://www.onetwotrip.com/_avia-search-proxy/search/v3'
         print(
@@ -295,18 +295,18 @@ def main():
         if len(all_flights_data) == 0:
             send_result(None, request_data, empty_data=True)
             continue
-        transport_var_tranship_limit_filtered = tranship_limit_filter(all_flights_data, tranship_limit)
+        transp_var_tranship_lim_filtrd = tranship_lim_filt(all_flights_data, tranship_limit)
         if request_data['return_date'] is not None:
-            round_flights = round_flights_filter(all_flights_data)
-            transport_var_filtered = []
+            round_flights = filter_round_flights(all_flights_data)
+            transp_var_filtrd = []
             for i in round_flights:
-                if i[0] in transport_var_tranship_limit_filtered and i[1] in transport_var_tranship_limit_filtered:
-                    transport_var_filtered.append(i)
+                if i[0] in transp_var_tranship_lim_filtrd and i[1] in transp_var_tranship_lim_filtrd:
+                    transp_var_filtrd.append(i)
         else:
-            transport_var_filtered = transport_var_tranship_limit_filtered
-        transp_variant_prices = get_transport_variant_prices(all_flights_data, transport_var_filtered)
-        cheapest_transp_variants, best_price = get_cheapest_transport_variants(all_flights_data, transp_variant_prices)
-        best_flights_info = get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price,
+            transp_var_filtrd = transp_var_tranship_lim_filtrd
+        transp_var_prices = get_transp_var_prices(all_flights_data, transp_var_filtrd)
+        cheapest_transp_vars, best_price = get_cheapest_transp_vars(all_flights_data, transp_var_prices)
+        best_flights_info = get_best_flights_info(all_flights_data, cheapest_transp_vars, best_price,
                                                   request_data["return_date"])
         send_result(best_flights_info, request_data, empty_data=False)
     return True
