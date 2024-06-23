@@ -32,18 +32,22 @@ def set_connection():
 
 
 def get_data(db_connection, table):
+    """Возвращает данные из БД"""
     cursor = db_connection.cursor()
     cursor.execute("SELECT * FROM %(table_name)s;", {"table_name": AsIs(table)})
     return cursor.fetchall()
 
 
 def get_column_names(db_connection, table):
+    """Возвращает названия столбцов таблицы"""
     cursor = db_connection.cursor()
     cursor.execute("SELECT * FROM %(table_name)s LIMIT 0;", {"table_name": AsIs(table)})
     return [desc[0] for desc in cursor.description]
 
 
 def del_dep_date_expired_rec(db_connection, table, archive):
+    """Переносит в архив запросы с истекшей датой вылета и удаляет их из поиска"""
+
     cursor = db_connection.cursor()
     cursor.execute(
         "INSERT INTO %(archive)s (old_id, depart_city, dest_city, max_transhipments, depart_date, return_date, num_adults, num_children, num_infants, luggage, search_init_date, telegr_acc, phone_num, email) SELECT * FROM %(table_name)s WHERE depart_date < CURRENT_DATE;",
@@ -54,6 +58,7 @@ def del_dep_date_expired_rec(db_connection, table, archive):
 
 
 def del_old_rec(db_connection, table, archive):
+    """Переносит в архив запросы, созданные более 3 суток назад и удаляет их из поиска"""
     cursor = db_connection.cursor()
     cursor.execute(
         "INSERT INTO %(archive)s (old_id, depart_city, dest_city, max_transhipments, depart_date, return_date, num_adults, num_children, num_infants, luggage, search_init_date, telegr_acc, phone_num, email) SELECT * FROM %(table_name)s WHERE EXTRACT(EPOCH FROM now() - search_init_date)/3600 > 72;",
@@ -63,6 +68,7 @@ def del_old_rec(db_connection, table, archive):
 
 
 def get_flight_data(url, request_data, city_codes):
+    """Осуществляет запрос к поисковому сервису и возвращает данные о всех вариантах перелета"""
     ua = UserAgent()
     my_headers = {
         'User-Agent': ua.random,
@@ -110,6 +116,7 @@ def get_flight_data(url, request_data, city_codes):
 
 
 def tranship_lim_filt(all_flights_data, tranship_limit):
+    """Фильтрует рейсы по количеству пересадок"""
     transport_variants_tranship_limit_filtered = []
     for item in all_flights_data['transportationVariants']:
         if len(all_flights_data['transportationVariants'][item]['tripRefs']) <= tranship_limit + 1:
@@ -118,6 +125,7 @@ def tranship_lim_filt(all_flights_data, tranship_limit):
 
 
 def filter_round_flights(all_flights_data):
+    """Фильтр: возвращает рейсы туда-обратно"""
     transport_variants_round_flight_filtered = []
     for item in all_flights_data['prices']:
         if len(all_flights_data['prices'][item]['transportationVariantIds']) == 2:
@@ -127,6 +135,7 @@ def filter_round_flights(all_flights_data):
 
 
 def get_transp_var_prices(all_flights_data, transport_var_filtered):
+    """Возвращает цены для каждого варианта перелета"""
     transp_variant_prices = {}
     for item in all_flights_data['prices']:
         if len(all_flights_data['prices'][item]['transportationVariantIds']) == 1:
@@ -144,6 +153,7 @@ def get_transp_var_prices(all_flights_data, transport_var_filtered):
 
 
 def get_cheapest_transp_vars(all_flights_data, transp_variant_prices):
+    """Возвращает самые дешевые варианты перелетов и их цену"""
     best_price = min(transp_variant_prices.values())
     cheapest_transport_var_id = []
     for key, value in transp_variant_prices.items():
@@ -186,6 +196,7 @@ def get_cheapest_transp_vars(all_flights_data, transp_variant_prices):
 
 
 def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price, return_date):
+    """Возвращает данные о самых дешевых рейсах"""
     if return_date is None:
         # one way flight
         best_flights_info = []
@@ -248,6 +259,7 @@ def get_best_flights_info(all_flights_data, cheapest_transp_variants, best_price
 
 
 def send_result(best_flights_info, request_data, empty_data):
+    """Отправляет данные о самом дешевом рейсе в Телеграм"""
     if empty_data:
         with TelegramClient('flight_catcher', int(os.getenv('TELEGRAM_API')), os.getenv('TELEGRAM_HASH')) as client:
             client.send_message(request_data['telegr_acc'],
