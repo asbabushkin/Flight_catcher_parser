@@ -10,6 +10,7 @@ from telethon import TelegramClient, events, sync, connection as tel_connection
 from dotenv import load_dotenv
 from psycopg2.extensions import AsIs
 from random import choice
+from data import search_keys, citycode_keys
 
 load_dotenv()
 
@@ -45,7 +46,7 @@ def get_column_names(db_connection, table):
     return [desc[0] for desc in cursor.description]
 
 
-def del_dep_date_expired_rec(db_connection, table, archive):
+def clean_expired_flights(db_connection, table, archive):
     """Переносит в архив запросы с истекшей датой вылета и удаляет их из поиска"""
 
     cursor = db_connection.cursor()
@@ -57,7 +58,7 @@ def del_dep_date_expired_rec(db_connection, table, archive):
     return None
 
 
-def del_old_rec(db_connection, table, archive):
+def clean_expired_search(db_connection, table, archive):
     """Переносит в архив запросы, созданные более 3 суток назад и удаляет их из поиска"""
     cursor = db_connection.cursor()
     cursor.execute(
@@ -154,7 +155,10 @@ def get_transp_var_prices(all_flights_data, transport_var_filtered):
 
 def get_cheapest_transp_vars(all_flights_data, transp_variant_prices):
     """Возвращает самые дешевые варианты перелетов и их цену"""
-    best_price = min(transp_variant_prices.values())
+    try:
+        best_price = min(transp_variant_prices.values())
+    except ValueError:
+        print("Перелеты не найдены. Измените условия поиска")
     cheapest_transport_var_id = []
     for key, value in transp_variant_prices.items():
         if value == best_price:
@@ -289,16 +293,14 @@ def send_result(best_flights_info, request_data, empty_data):
 
 def main():
     with set_connection() as conn:
-        del_dep_date_expired_rec(conn, 'flight_search_search', 'flight_search_searcharchive')
-        del_old_rec(conn, 'flight_search_search', 'flight_search_searcharchive')
+        clean_expired_flights(conn, 'flight_search_search', 'flight_search_searcharchive')
+        clean_expired_search(conn, 'flight_search_search', 'flight_search_searcharchive')
         search_data = get_data(conn, 'flight_search_search')
         city_data = get_data(conn, 'flight_search_citycode')
-        search_colnames = get_column_names(conn, 'flight_search_search')
-        citycode_colnames = get_column_names(conn, 'flight_search_citycode')
 
-    city_codes = [dict(zip(citycode_colnames, city_data[i])) for i in range(len(city_data))]
+    city_codes = [dict(zip(citycode_keys, city_data[i])) for i in range(len(city_data))]
     for record in search_data:
-        request_data = dict(zip(search_colnames, record))
+        request_data = dict(zip(search_keys, record))
         tranship_limit = request_data['max_transhipments']
         search_link_json = f'https://www.onetwotrip.com/_avia-search-proxy/search/v3'
         print(
