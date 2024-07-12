@@ -43,20 +43,25 @@ def main():
         if not all_flights_data:
             send_result(None, request_data)
             continue
-        transp_var_tranship_lim_filtrd = filter_transfer_lim(
+
+        flights_transfer_filtered = filter_transfer_lim(
             all_flights_data, tranship_limit
         )
+        if not flights_transfer_filtered:
+            send_result(None, request_data)
+            continue
+
         if request_data["return_date"] is not None:
             round_flights = filter_round_flights(all_flights_data)
             transp_var_filtrd = []
             for i in round_flights:
                 if (
-                    i[0] in transp_var_tranship_lim_filtrd
-                    and i[1] in transp_var_tranship_lim_filtrd
+                    i[0] in flights_transfer_filtered
+                    and i[1] in flights_transfer_filtered
                 ):
                     transp_var_filtrd.append(i)
         else:
-            transp_var_filtrd = transp_var_tranship_lim_filtrd
+            transp_var_filtrd = flights_transfer_filtered
         transp_var_prices = get_transp_var_prices(all_flights_data, transp_var_filtrd)
         cheapest_transp_vars, best_price = get_cheapest_transp_vars(
             all_flights_data, transp_var_prices
@@ -67,7 +72,7 @@ def main():
             best_price,
             request_data["return_date"],
         )
-        send_result(best_flights_info, request_data, empty_data=False)
+        send_result(best_flights_info, request_data)
     return True
 
 

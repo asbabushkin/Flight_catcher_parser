@@ -7,6 +7,8 @@ def filter_transfer_lim(all_flights_data, tranship_limit):
             < tranship_limit + 2
         ):
             flights_transfer_filtered.append(item)
+    if not flights_transfer_filtered:
+        return None
     return flights_transfer_filtered
 
 
