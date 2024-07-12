@@ -11,18 +11,6 @@ def filter_transfer_lim(all_flights_data, tranship_limit):
         return None
     return flights_transfer_filtered
 
-
-def filter_round_flights(all_flights_data):
-    """Фильтр: возвращает рейсы туда-обратно- работает неправильно!!!"""
-    transport_variants_round_flight_filtered = []
-    for item in all_flights_data["prices"]:
-        if len(all_flights_data["prices"][item]["transportationVariantIds"]) == 2:
-            transport_variants_round_flight_filtered.append(
-                all_flights_data["prices"][item]["transportationVariantIds"]
-            )
-    return transport_variants_round_flight_filtered
-
-
 def get_transp_var_prices(all_flights_data, transport_var_filtered):
     """Возвращает цены для каждого варианта перелета"""
     transp_variant_prices = {}
@@ -240,3 +228,13 @@ def get_best_flights_info(
             best_flight_i_info.extend([first_flight_info, back_flight_info])
             best_flights_info.append(best_flight_i_info)
     return best_flights_info
+
+#def filter_round_flights(all_flights_data):
+#     """Фильтр: возвращает рейсы туда-обратно"""
+#     round_flights = []
+#     for item in all_flights_data["prices"]:
+#         if len(all_flights_data["prices"][item]["transportationVariantIds"]) == 2:
+#             round_flights.append(
+#                 all_flights_data["prices"][item]["transportationVariantIds"]
+#             )
+#     return round_flights
