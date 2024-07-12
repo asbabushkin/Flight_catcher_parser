@@ -1,5 +1,5 @@
 search_link_json = "https://www.onetwotrip.com/_avia-search-proxy/search/v3"
-url_json = "https://www.onetwotrip.com/_avia/deals_v4/directApiTop?"
+#url_json = "https://www.onetwotrip.com/_avia/deals_v4/directApiTop?"
 citycode_keys = ["id", "city_eng", "city_rus", "code_eng", "code_rus"]
 
 search_keys = [

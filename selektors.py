@@ -57,10 +57,9 @@ def get_flight_data(url, request_data, city_codes):
     all_flights_data = requests.get(
         url=url, params=params, proxies=my_proxies, headers=my_headers
     ).json()
-    if len(all_flights_data["prices"]) == 0:
-        return {}
-    else:
-        return all_flights_data
+    if not all_flights_data["transportationVariants"]:
+        return None
+    return all_flights_data
 
 
 def get_column_names(db_connection, table):

@@ -13,7 +13,7 @@ from processors import (
     get_best_flights_info,
     get_cheapest_transp_vars,
     get_transp_var_prices,
-    tranship_lim_filt,
+    filter_transfer_lim,
 )
 from selektors import get_data, get_flight_data
 
@@ -40,10 +40,10 @@ def main():
             f'Перелет {request_data["depart_city"]}-{request_data["dest_city"]} вылет: {request_data["depart_date"]} возвращение: {request_data["return_date"]} пересадок не более: {tranship_limit}'
         )
         all_flights_data = get_flight_data(search_link_json, request_data, city_codes)
-        if len(all_flights_data) == 0:
-            send_result(None, request_data, empty_data=True)
+        if not all_flights_data:
+            send_result(None, request_data)
             continue
-        transp_var_tranship_lim_filtrd = tranship_lim_filt(
+        transp_var_tranship_lim_filtrd = filter_transfer_lim(
             all_flights_data, tranship_limit
         )
         if request_data["return_date"] is not None:

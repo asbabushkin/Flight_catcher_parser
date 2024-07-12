@@ -1,0 +1,22 @@
+https://www.onetwotrip.com/_avia-search-proxy/search/v3?route=1807CEKVOG&ad=1&cn=0&in=0&showDeeplink=false&cs=E&source=yandex_direct_brand&priceIncludeBaggage=true&noClearNoBags=true&noMix=true&srcmarker=brand_generic_ru_s_k43484950605_desktop_81020287&cryptoTripsVersion=61&doNotMap=true
+transportationVariants - варианты перелета
+transportationVariants[some_item][directionIndex]: 0/1 - туда/обратно
+transportationVariants[some_item][totalJourneyTimeMinutes] - общая продолжительность перелета
+transportationVariants[some_item][tripRefs] - список рейсов в перелете. Если в списке 1 рейс, то перелет прямой.
+transportationVariants[some_item][tripRefs][0/1][tripId] - id рейса
+trips[some_item=tripId] - информация о рейсе
+trips[some_item=tripId][from] - код города вылета
+trips[some_item=tripId][to] - код города прилета
+trips[some_item=tripId][carrier] - код перевозчика
+trips[some_item=tripId][equipment] - модель самолета
+trips[some_item=tripId][carrierTripNumber] - номер рейса
+trips[some_item=tripId][startDateTime] - дата начала рейса в часовом поясе аэропорта вылета
+trips[some_item=tripId][endDateTime] - дата конца рейса в часосом поясе аэропорта прилета
+trips[some_item=tripId][tripTimeMinutes] - продолжительность рейса в минутах
+trips[some_item=tripId][id] - id рейса
+prices[some_item][transportationVariantIds][0] - id перелета туда
+prices[some_item][totalAmount] - цена перелета
+prices[some_item][tags] - тэг перелета. Обычно пустой список.
+prices[some_item][tags][0][title]: "самый дешевый" - тэг самого дешевого перелета
+prices[some_item][tags][0][type]: "LOWEST_PRICE" - тэг самого дешевого перелета
+prices[some_item==price_id][id] - id цены

@@ -1,17 +1,17 @@
-def tranship_lim_filt(all_flights_data, tranship_limit):
+def filter_transfer_lim(all_flights_data, tranship_limit):
     """Фильтрует рейсы по количеству пересадок"""
-    transport_variants_tranship_limit_filtered = []
+    flights_transfer_filtered = []
     for item in all_flights_data["transportationVariants"]:
         if (
             len(all_flights_data["transportationVariants"][item]["tripRefs"])
-            <= tranship_limit + 1
+            < tranship_limit + 2
         ):
-            transport_variants_tranship_limit_filtered.append(item)
-    return transport_variants_tranship_limit_filtered
+            flights_transfer_filtered.append(item)
+    return flights_transfer_filtered
 
 
 def filter_round_flights(all_flights_data):
-    """Фильтр: возвращает рейсы туда-обратно"""
+    """Фильтр: возвращает рейсы туда-обратно- работает неправильно!!!"""
     transport_variants_round_flight_filtered = []
     for item in all_flights_data["prices"]:
         if len(all_flights_data["prices"][item]["transportationVariantIds"]) == 2:
