@@ -33,10 +33,12 @@ def main():
     city_codes = [dict(zip(citycode_keys, city_data[i])) for i in range(len(city_data))]
     for record in search_data:
         request_data = dict(zip(search_keys, record))
-        tranship_limit = request_data["max_transhipments"]
+        transfer_lim = request_data["max_transhipments"]
 
         print(
-            f'Перелет {request_data["depart_city"]}-{request_data["dest_city"]} вылет: {request_data["depart_date"]} возвращение: {request_data["return_date"]} пересадок не более: {tranship_limit}'
+            f'Перелет {request_data["depart_city"]}-{request_data["dest_city"]} вылет: '
+            f'{request_data["depart_date"]} возвращение: {request_data["return_date"]} '
+            f'пересадок не более: {transfer_lim}'
         )
         all_flights_data = get_flight_data(search_link_json, request_data, city_codes)
         if not all_flights_data:
@@ -44,7 +46,7 @@ def main():
             continue
 
         flights_transfer_filtered = filter_transfer_lim(
-            all_flights_data, tranship_limit
+            all_flights_data, transfer_lim
         )
         if not flights_transfer_filtered:
             send_result(None, request_data)

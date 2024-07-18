@@ -11,32 +11,18 @@ def filter_transfer_lim(all_flights_data, tranship_limit):
         return None
     return flights_transfer_filtered
 
-def get_transp_var_prices(all_flights_data, transport_var_filtered):
+def get_transp_var_prices(all_flights, transport_var_filtered):
     """Возвращает цены для каждого варианта перелета"""
-    transp_variant_prices = {}
-    for item in all_flights_data["prices"]:
-        if len(all_flights_data["prices"][item]["transportationVariantIds"]) == 1:
-            if (
-                all_flights_data["prices"][item]["transportationVariantIds"][0]
-                in transport_var_filtered
-            ):
-                transp_variant_prices[
-                    all_flights_data["prices"][item]["transportationVariantIds"][0]
-                ] = all_flights_data["prices"][item]["totalAmount"]
-        elif len(all_flights_data["prices"][item]["transportationVariantIds"]) == 2:
-            for var in transport_var_filtered:
-                if (
-                    all_flights_data["prices"][item]["transportationVariantIds"][0]
-                    in var
-                    and all_flights_data["prices"][item]["transportationVariantIds"][1]
-                    in var
-                ):
-                    transp_variant_prices[
-                        tuple(
-                            all_flights_data["prices"][item]["transportationVariantIds"]
-                        )
-                    ] = all_flights_data["prices"][item]["totalAmount"]
-                    continue
+    transp_variant_prices = dict()
+    for item in all_flights["prices"]:
+        if (
+            all_flights["prices"][item]["transportationVariantIds"][0]
+            in transport_var_filtered
+        ):
+            transp_variant_prices[
+                all_flights["prices"][item]["transportationVariantIds"][0]
+            ] = all_flights["prices"][item]["totalAmount"]
+
     return transp_variant_prices
 
 

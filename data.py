@@ -1,4 +1,5 @@
 search_link_json = "https://www.onetwotrip.com/_avia-search-proxy/search/v3"
+#https://www.onetwotrip.com/_avia-search-proxy/search/v3?route=2507TOXKZN&ad=1&cn=0&in=0&showDeeplink=false&cs=E&source=yandex_direct_brand&priceIncludeBaggage=true&noClearNoBags=true&noMix=true&srcmarker=brand_generic_ru_s_k43484950605_desktop_81020287&cryptoTripsVersion=61&doNotMap=true
 #url_json = "https://www.onetwotrip.com/_avia/deals_v4/directApiTop?"
 citycode_keys = ["id", "city_eng", "city_rus", "code_eng", "code_rus"]
 
