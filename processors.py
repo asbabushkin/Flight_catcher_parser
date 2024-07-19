@@ -37,8 +37,8 @@ def get_cheapest_journeys(all_flights, journey_prices):
     """
     Returns cheapest journey variants and their prices.
     input: journey_prices example {'RTJWn8': 12035.21, 'CYU9vu': 19232.2, 'b1W7wQ': 12383.96}
-    output: cheapest_transp_variants, best_price exmple [[1680, ['6TbIzx', 'AJhP9p']]] 15481.63
-    where 1680 - flight time, ['6TbIzx', 'AJhP9p'] - id of flights included in the journey, 15481.63 - price.
+    output: cheapest_transp_variants, best_price example [[1680, ['6TbIzx', 'AJhP9p']]] 15481.63
+    where 1680 - journey time, ['6TbIzx', 'AJhP9p'] - id of flights included in the journey, 15481.63 - price.
     """
     # endregion
     best_price = min(journey_prices.values())
@@ -70,11 +70,11 @@ def get_cheapest_journeys(all_flights, journey_prices):
     return cheapest_journeys, best_price
 
 
-def get_best_flights(all_flights, cheapest_transp_variants, best_price):
-    """Возвращает данные о самых дешевых рейсах"""
+def get_best_flights_descr(all_flights, cheapest_journeys, best_price):
+    """Возвращает словарь с данными о самых дешевых рейсах"""
 
     res_lst = []
-    for trip in cheapest_transp_variants:
+    for trip in cheapest_journeys:
         flight_info = {
             "flight_type": "one way",
             "price": best_price,
