@@ -15,7 +15,7 @@ def send_result(best_flights, request_data):
             client.send_message(
                 request_data["telegr_acc"],
                 message=f'Перелет {request_data["depart_city"]} - {request_data["dest_city"]} на дату '
-                        f'{request_data["depart_date"]} не найден. Измените дату или условия поиска',
+                f'{request_data["depart_date"]} не найден. Измените дату или условия поиска',
             )
         return False
 

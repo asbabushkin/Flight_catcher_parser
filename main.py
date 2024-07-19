@@ -38,16 +38,14 @@ def main():
         print(
             f'Перелет {request_data["depart_city"]}-{request_data["dest_city"]} вылет: '
             f'{request_data["depart_date"]} возвращение: {request_data["return_date"]} '
-            f'пересадок не более: {transfer_limit}'
+            f"пересадок не более: {transfer_limit}"
         )
         all_flights = get_flight_data(search_link_json, request_data, city_codes)
         if not all_flights:
             send_result(None, request_data)
             continue
 
-        flights_transfer_filtered = filter_transfer_lim(
-            all_flights, transfer_limit
-        )
+        flights_transfer_filtered = filter_transfer_lim(all_flights, transfer_limit)
         if not flights_transfer_filtered:
             send_result(None, request_data)
             continue

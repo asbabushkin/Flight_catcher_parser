@@ -11,13 +11,14 @@ def filter_transfer_lim(all_flights, tranship_limit):
         return None
     return flights_transfer_filtered
 
+
 def get_journey_prices(all_flights, transport_var_filtered):
-# region func_description
+    # region func_description
     """
     Returns transportationVariant key and price for every journe.
     transp_prices example {'RTJWn8': 12035.21, 'CYU9vu': 19232.2, 'b1W7wQ': 12383.96}
     """
-# endregion
+    # endregion
     transp_prices = dict()
     for item in all_flights["prices"]:
         if (
@@ -32,33 +33,33 @@ def get_journey_prices(all_flights, transport_var_filtered):
 
 
 def get_cheapest_journeys(all_flights, journey_prices):
-# region func_description
+    # region func_description
     """
     Returns cheapest journey variants and their prices.
-    journey_prices example {'RTJWn8': 12035.21, 'CYU9vu': 19232.2, 'b1W7wQ': 12383.96}"
+    input: journey_prices example {'RTJWn8': 12035.21, 'CYU9vu': 19232.2, 'b1W7wQ': 12383.96}
+    output: cheapest_transp_variants, best_price exmple [[1680, ['6TbIzx', 'AJhP9p']]] 15481.63
+    where 1680 - flight time, ['6TbIzx', 'AJhP9p'] - id of flights included in the journey, 15481.63 - price.
     """
-# endregion
+    # endregion
     best_price = min(journey_prices.values())
     cheapest_journey_id = []
     for key, value in journey_prices.items():
         if value == best_price:
             cheapest_journey_id.append(key)
-    cheapest_transp_variants = []
+    cheapest_journeys = []
     for transp_id in cheapest_journey_id:
         for item in all_flights["transportationVariants"]:
             if item == transp_id:
                 trip_ids = []
                 for i in range(
-                    len(
-                        all_flights["transportationVariants"][item]["tripRefs"]
-                    )
+                    len(all_flights["transportationVariants"][item]["tripRefs"])
                 ):
                     trip_ids.append(
-                        all_flights["transportationVariants"][item][
-                            "tripRefs"
-                        ][i]["tripId"]
+                        all_flights["transportationVariants"][item]["tripRefs"][i][
+                            "tripId"
+                        ]
                     )
-                cheapest_transp_variants.append(
+                cheapest_journeys.append(
                     [
                         all_flights["transportationVariants"][item][
                             "totalJourneyTimeMinutes"
@@ -66,13 +67,10 @@ def get_cheapest_journeys(all_flights, journey_prices):
                         trip_ids,
                     ]
                 )
+    return cheapest_journeys, best_price
 
-    return cheapest_transp_variants, best_price
 
-
-def get_best_flights(
-    all_flights, cheapest_transp_variants, best_price
-):
+def get_best_flights(all_flights, cheapest_transp_variants, best_price):
     """Возвращает данные о самых дешевых рейсах"""
 
     res_lst = []
@@ -80,16 +78,10 @@ def get_best_flights(
         flight_info = {
             "flight_type": "one way",
             "price": best_price,
-            "depart_date_time": all_flights["trips"][trip[1][0]][
-                "startDateTime"
-            ],
-            "arrive_date_time": all_flights["trips"][trip[1][-1]][
-                "endDateTime"
-            ],
+            "depart_date_time": all_flights["trips"][trip[1][0]]["startDateTime"],
+            "arrive_date_time": all_flights["trips"][trip[1][-1]]["endDateTime"],
             "carrier": all_flights["trips"][trip[1][0]]["carrier"],
-            "flight_number": all_flights["trips"][trip[1][0]][
-                "carrierTripNumber"
-            ],
+            "flight_number": all_flights["trips"][trip[1][0]]["carrierTripNumber"],
             "orig_city": all_flights["trips"][trip[1][0]]["from"],
             "dest_city": all_flights["trips"][trip[1][-1]]["to"],
             "num_tranship": len(trip[1]) - 1,
@@ -106,4 +98,3 @@ def get_best_flights(
         res_lst.append(flight_info)
 
     return res_lst
-
