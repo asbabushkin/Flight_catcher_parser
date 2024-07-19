@@ -38,91 +38,35 @@ def get_cheapest_journeys(all_flights, journey_prices):
     journey_prices example {'RTJWn8': 12035.21, 'CYU9vu': 19232.2, 'b1W7wQ': 12383.96}"
     """
 # endregion
-
-    try:
-        best_price = min(journey_prices.values())
-    except ValueError:
-        print("Перелеты не найдены. Измените условия поиска")
-    cheapest_transport_var_id = []
+    best_price = min(journey_prices.values())
+    cheapest_journey_id = []
     for key, value in journey_prices.items():
         if value == best_price:
-            cheapest_transport_var_id.append(key)
+            cheapest_journey_id.append(key)
     cheapest_transp_variants = []
-    for transp_id in cheapest_transport_var_id:
+    for transp_id in cheapest_journey_id:
         for item in all_flights["transportationVariants"]:
-            # one way flight
-            if isinstance(transp_id, str):
-                if item == transp_id:
-                    trip_ids = []
-                    for i in range(
-                        len(
-                            all_flights["transportationVariants"][item]["tripRefs"]
-                        )
-                    ):
-                        trip_ids.append(
-                            all_flights["transportationVariants"][item][
-                                "tripRefs"
-                            ][i]["tripId"]
-                        )
-                    cheapest_transp_variants.append(
-                        [
-                            all_flights["transportationVariants"][item][
-                                "totalJourneyTimeMinutes"
-                            ],
-                            trip_ids,
-                        ]
+            if item == transp_id:
+                trip_ids = []
+                for i in range(
+                    len(
+                        all_flights["transportationVariants"][item]["tripRefs"]
                     )
-            # round flight
-            elif isinstance(transp_id, tuple):
-                if transp_id[0] == item:
-                    lst_forvard_way = []
-                    for i in range(
-                        len(
-                            all_flights["transportationVariants"][item]["tripRefs"]
-                        )
-                    ):
-                        lst_forvard_way.append(
-                            all_flights["transportationVariants"][item][
-                                "tripRefs"
-                            ][i]["tripId"]
-                        )
-                    lst_forvard_way_and_time = list(
-                        [
-                            all_flights["transportationVariants"][item][
-                                "totalJourneyTimeMinutes"
-                            ],
-                            lst_forvard_way,
-                        ]
+                ):
+                    trip_ids.append(
+                        all_flights["transportationVariants"][item][
+                            "tripRefs"
+                        ][i]["tripId"]
                     )
-                    for j in all_flights["transportationVariants"]:
-                        if transp_id[1] == j:
-                            lst_back_way = []
-                            for i in range(
-                                len(
-                                    all_flights["transportationVariants"][j][
-                                        "tripRefs"
-                                    ]
-                                )
-                            ):
-                                lst_back_way.append(
-                                    all_flights["transportationVariants"][j][
-                                        "tripRefs"
-                                    ][i]["tripId"]
-                                )
-                            lst_back_way_and_time = list(
-                                [
-                                    all_flights["transportationVariants"][j][
-                                        "totalJourneyTimeMinutes"
-                                    ],
-                                    lst_back_way,
-                                ]
-                            )
-                    cheapest_transp_variants.append(
-                        [
-                            lst_forvard_way_and_time[0] + lst_back_way_and_time[0],
-                            [lst_forvard_way_and_time, lst_back_way_and_time],
-                        ]
-                    )
+                cheapest_transp_variants.append(
+                    [
+                        all_flights["transportationVariants"][item][
+                            "totalJourneyTimeMinutes"
+                        ],
+                        trip_ids,
+                    ]
+                )
+
     return cheapest_transp_variants, best_price
 
 
