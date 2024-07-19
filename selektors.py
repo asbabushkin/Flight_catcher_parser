@@ -54,12 +54,12 @@ def get_flight_data(url, request_data, city_codes):
         "doNotMap": "true",
     }
     # print("Страница запроса с IP:", requests.get("http://icanhazip.com", proxies=my_proxies).text.strip())
-    all_flights_data = requests.get(
+    all_flights = requests.get(
         url=url, params=params, proxies=my_proxies, headers=my_headers
     ).json()
-    if not all_flights_data["transportationVariants"]:
+    if not all_flights["transportationVariants"]:
         return None
-    return all_flights_data
+    return all_flights
 
 
 def get_column_names(db_connection, table):

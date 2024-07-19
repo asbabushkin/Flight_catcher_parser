@@ -1,9 +1,9 @@
-def filter_transfer_lim(all_flights_data, tranship_limit):
+def filter_transfer_lim(all_flights, tranship_limit):
     """Фильтрует рейсы по количеству пересадок"""
     flights_transfer_filtered = []
-    for item in all_flights_data["transportationVariants"]:
+    for item in all_flights["transportationVariants"]:
         if (
-            len(all_flights_data["transportationVariants"][item]["tripRefs"])
+            len(all_flights["transportationVariants"][item]["tripRefs"])
             < tranship_limit + 2
         ):
             flights_transfer_filtered.append(item)
@@ -12,7 +12,8 @@ def filter_transfer_lim(all_flights_data, tranship_limit):
     return flights_transfer_filtered
 
 def get_transp_var_prices(all_flights, transport_var_filtered):
-    """Возвращает цены для каждого варианта перелета"""
+    """Возвращает ключ transportationVariant и цену для каждого из вариантов перелета: {'RTJWn8': 12035.21,
+    'UYdVt1': 49741.87, 'e0WzkQ': 46205.28, 'CYU9vu': 19232.2, 'b1W7wQ': 12383.96}"""
     transp_variant_prices = dict()
     for item in all_flights["prices"]:
         if (
@@ -26,7 +27,7 @@ def get_transp_var_prices(all_flights, transport_var_filtered):
     return transp_variant_prices
 
 
-def get_cheapest_transp_vars(all_flights_data, transp_variant_prices):
+def get_cheapest_transp_vars(all_flights, transp_variant_prices):
     """Возвращает самые дешевые варианты перелетов и их цену"""
     try:
         best_price = min(transp_variant_prices.values())
@@ -38,24 +39,24 @@ def get_cheapest_transp_vars(all_flights_data, transp_variant_prices):
             cheapest_transport_var_id.append(key)
     cheapest_transp_variants = []
     for transp_id in cheapest_transport_var_id:
-        for item in all_flights_data["transportationVariants"]:
+        for item in all_flights["transportationVariants"]:
             # one way flight
             if isinstance(transp_id, str):
                 if item == transp_id:
                     trip_ids = []
                     for i in range(
                         len(
-                            all_flights_data["transportationVariants"][item]["tripRefs"]
+                            all_flights["transportationVariants"][item]["tripRefs"]
                         )
                     ):
                         trip_ids.append(
-                            all_flights_data["transportationVariants"][item][
+                            all_flights["transportationVariants"][item][
                                 "tripRefs"
                             ][i]["tripId"]
                         )
                     cheapest_transp_variants.append(
                         [
-                            all_flights_data["transportationVariants"][item][
+                            all_flights["transportationVariants"][item][
                                 "totalJourneyTimeMinutes"
                             ],
                             trip_ids,
@@ -67,40 +68,40 @@ def get_cheapest_transp_vars(all_flights_data, transp_variant_prices):
                     lst_forvard_way = []
                     for i in range(
                         len(
-                            all_flights_data["transportationVariants"][item]["tripRefs"]
+                            all_flights["transportationVariants"][item]["tripRefs"]
                         )
                     ):
                         lst_forvard_way.append(
-                            all_flights_data["transportationVariants"][item][
+                            all_flights["transportationVariants"][item][
                                 "tripRefs"
                             ][i]["tripId"]
                         )
                     lst_forvard_way_and_time = list(
                         [
-                            all_flights_data["transportationVariants"][item][
+                            all_flights["transportationVariants"][item][
                                 "totalJourneyTimeMinutes"
                             ],
                             lst_forvard_way,
                         ]
                     )
-                    for j in all_flights_data["transportationVariants"]:
+                    for j in all_flights["transportationVariants"]:
                         if transp_id[1] == j:
                             lst_back_way = []
                             for i in range(
                                 len(
-                                    all_flights_data["transportationVariants"][j][
+                                    all_flights["transportationVariants"][j][
                                         "tripRefs"
                                     ]
                                 )
                             ):
                                 lst_back_way.append(
-                                    all_flights_data["transportationVariants"][j][
+                                    all_flights["transportationVariants"][j][
                                         "tripRefs"
                                     ][i]["tripId"]
                                 )
                             lst_back_way_and_time = list(
                                 [
-                                    all_flights_data["transportationVariants"][j][
+                                    all_flights["transportationVariants"][j][
                                         "totalJourneyTimeMinutes"
                                     ],
                                     lst_back_way,
@@ -115,40 +116,40 @@ def get_cheapest_transp_vars(all_flights_data, transp_variant_prices):
     return cheapest_transp_variants, best_price
 
 
-def get_best_flights_info(
-    all_flights_data, cheapest_transp_variants, best_price
+def get_best_flights(
+    all_flights, cheapest_transp_variants, best_price
 ):
     """Возвращает данные о самых дешевых рейсах"""
 
-    best_flights_info = []
+    res_lst = []
     for trip in cheapest_transp_variants:
         flight_info = {
             "flight_type": "one way",
             "price": best_price,
-            "depart_date_time": all_flights_data["trips"][trip[1][0]][
+            "depart_date_time": all_flights["trips"][trip[1][0]][
                 "startDateTime"
             ],
-            "arrive_date_time": all_flights_data["trips"][trip[1][-1]][
+            "arrive_date_time": all_flights["trips"][trip[1][-1]][
                 "endDateTime"
             ],
-            "carrier": all_flights_data["trips"][trip[1][0]]["carrier"],
-            "flight_number": all_flights_data["trips"][trip[1][0]][
+            "carrier": all_flights["trips"][trip[1][0]]["carrier"],
+            "flight_number": all_flights["trips"][trip[1][0]][
                 "carrierTripNumber"
             ],
-            "orig_city": all_flights_data["trips"][trip[1][0]]["from"],
-            "dest_city": all_flights_data["trips"][trip[1][-1]]["to"],
+            "orig_city": all_flights["trips"][trip[1][0]]["from"],
+            "dest_city": all_flights["trips"][trip[1][-1]]["to"],
             "num_tranship": len(trip[1]) - 1,
             "tranship_cities": (
                 None
                 if len(trip[1]) == 1
                 else [
-                    all_flights_data["trips"][trip[1][i]]["to"]
+                    all_flights["trips"][trip[1][i]]["to"]
                     for i in range(len(trip[1]) - 1)
                 ]
             ),
             "total_flight_time": trip[0],
         }
-        best_flights_info.append(flight_info)
+        res_lst.append(flight_info)
 
-    return best_flights_info
+    return res_lst
 
