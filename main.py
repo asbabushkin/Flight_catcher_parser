@@ -1,7 +1,3 @@
-"""
-Implemented using telethon & schedule
-"""
-
 import schedule
 from dotenv import load_dotenv
 
@@ -9,7 +5,7 @@ from data import citycode_keys, search_keys, search_link_json
 from injektors import clean_expired_flights, clean_expired_search
 from maintainers import send_result, set_connection
 from processors import (
-    get_best_flights,
+    get_best_flights_descr,
     get_cheapest_journeys,
     get_journey_prices,
     filter_transfer_lim,
@@ -51,12 +47,12 @@ def main():
             continue
 
         journey_prices = get_journey_prices(all_flights, flights_transfer_filtered)
-        cheapest_transp_vars, best_price = get_cheapest_journeys(
+        cheapest_journeys, best_price = get_cheapest_journeys(
             all_flights, journey_prices
         )
-        best_flights_info = get_best_flights(
+        best_flights_info = get_best_flights_descr(
             all_flights,
-            cheapest_transp_vars,
+            cheapest_journeys,
             best_price,
         )
         send_result(best_flights_info, request_data)
