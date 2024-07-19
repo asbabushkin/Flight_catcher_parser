@@ -10,8 +10,8 @@ from injektors import clean_expired_flights, clean_expired_search
 from maintainers import send_result, set_connection
 from processors import (
     get_best_flights,
-    get_cheapest_transp_vars,
-    get_transp_var_prices,
+    get_cheapest_journeys,
+    get_journey_prices,
     filter_transfer_lim,
 )
 from selektors import get_data, get_flight_data
@@ -52,9 +52,9 @@ def main():
             send_result(None, request_data)
             continue
 
-        transp_var_prices = get_transp_var_prices(all_flights, flights_transfer_filtered)
-        cheapest_transp_vars, best_price = get_cheapest_transp_vars(
-            all_flights, transp_var_prices
+        journey_prices = get_journey_prices(all_flights, flights_transfer_filtered)
+        cheapest_transp_vars, best_price = get_cheapest_journeys(
+            all_flights, journey_prices
         )
         best_flights_info = get_best_flights(
             all_flights,

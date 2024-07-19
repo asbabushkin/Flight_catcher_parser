@@ -11,30 +11,40 @@ def filter_transfer_lim(all_flights, tranship_limit):
         return None
     return flights_transfer_filtered
 
-def get_transp_var_prices(all_flights, transport_var_filtered):
-    """Возвращает ключ transportationVariant и цену для каждого из вариантов перелета: {'RTJWn8': 12035.21,
-    'UYdVt1': 49741.87, 'e0WzkQ': 46205.28, 'CYU9vu': 19232.2, 'b1W7wQ': 12383.96}"""
-    transp_variant_prices = dict()
+def get_journey_prices(all_flights, transport_var_filtered):
+# region func_description
+    """
+    Returns transportationVariant key and price for every journe.
+    transp_prices example {'RTJWn8': 12035.21, 'CYU9vu': 19232.2, 'b1W7wQ': 12383.96}
+    """
+# endregion
+    transp_prices = dict()
     for item in all_flights["prices"]:
         if (
             all_flights["prices"][item]["transportationVariantIds"][0]
             in transport_var_filtered
         ):
-            transp_variant_prices[
+            transp_prices[
                 all_flights["prices"][item]["transportationVariantIds"][0]
             ] = all_flights["prices"][item]["totalAmount"]
 
-    return transp_variant_prices
+    return transp_prices
 
 
-def get_cheapest_transp_vars(all_flights, transp_variant_prices):
-    """Возвращает самые дешевые варианты перелетов и их цену"""
+def get_cheapest_journeys(all_flights, journey_prices):
+# region func_description
+    """
+    Returns cheapest journey variants and their prices.
+    journey_prices example {'RTJWn8': 12035.21, 'CYU9vu': 19232.2, 'b1W7wQ': 12383.96}"
+    """
+# endregion
+
     try:
-        best_price = min(transp_variant_prices.values())
+        best_price = min(journey_prices.values())
     except ValueError:
         print("Перелеты не найдены. Измените условия поиска")
     cheapest_transport_var_id = []
-    for key, value in transp_variant_prices.items():
+    for key, value in journey_prices.items():
         if value == best_price:
             cheapest_transport_var_id.append(key)
     cheapest_transp_variants = []
