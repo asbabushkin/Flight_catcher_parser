@@ -4,12 +4,8 @@ from dotenv import load_dotenv
 from data import citycode_keys, search_keys, search_link_json
 from injektors import clean_expired_flights, clean_expired_search
 from maintainers import send_result, set_connection
-from processors import (
-    get_best_flights_descr,
-    get_cheapest_journeys,
-    get_journey_prices,
-    filter_transfer_lim,
-)
+from processors import (filter_transfer_lim, get_best_flights_descr,
+                        get_cheapest_journeys, get_journey_prices)
 from selektors import get_data, get_flight_data
 
 load_dotenv()
@@ -47,14 +43,8 @@ def main():
             continue
 
         journey_prices = get_journey_prices(all_flights, flights_transfer_filtered)
-        cheapest_journeys, best_price = get_cheapest_journeys(
-            all_flights, journey_prices
-        )
-        best_flights_info = get_best_flights_descr(
-            all_flights,
-            cheapest_journeys,
-            best_price,
-        )
+        cheapest_journeys = get_cheapest_journeys(all_flights, journey_prices)
+        best_flights_info = get_best_flights_descr(all_flights, cheapest_journeys)
         send_result(best_flights_info, request_data)
 
 

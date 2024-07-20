@@ -37,8 +37,9 @@ def get_cheapest_journeys(all_flights, journey_prices):
     """
     Returns cheapest journey variants and their prices.
     input: journey_prices example {'RTJWn8': 12035.21, 'CYU9vu': 19232.2, 'b1W7wQ': 12383.96}
-    output: cheapest_transp_variants, best_price example [[1680, ['6TbIzx', 'AJhP9p']]] 15481.63
-    where 1680 - journey time, ['6TbIzx', 'AJhP9p'] - id of flights included in the journey, 15481.63 - price.
+    output: [{'journey_time': 1680, 'flight_ids': ['6TbIzx', 'AJhP9p'], 'best_price': 15058.86}]
+        where 'flight_ids' - id of flights included in the journey.
+
     """
     # endregion
     best_price = min(journey_prices.values())
@@ -60,40 +61,49 @@ def get_cheapest_journeys(all_flights, journey_prices):
                         ]
                     )
                 cheapest_journeys.append(
-                    [
-                        all_flights["transportationVariants"][item][
+                    {
+                        "journey_time": all_flights["transportationVariants"][item][
                             "totalJourneyTimeMinutes"
                         ],
-                        trip_ids,
-                    ]
+                        "flight_ids": trip_ids,
+                        "best_price": best_price,
+                    }
                 )
-    return cheapest_journeys, best_price
+    return cheapest_journeys
 
 
-def get_best_flights_descr(all_flights, cheapest_journeys, best_price):
-    """Возвращает словарь с данными о самых дешевых рейсах"""
+def get_best_flights_descr(all_flights, cheapest_journeys):
+    """
+    Returns cheapest journeys detailed data for sending to clients.
+    """
 
     res_lst = []
     for trip in cheapest_journeys:
         flight_info = {
             "flight_type": "one way",
-            "price": best_price,
-            "depart_date_time": all_flights["trips"][trip[1][0]]["startDateTime"],
-            "arrive_date_time": all_flights["trips"][trip[1][-1]]["endDateTime"],
-            "carrier": all_flights["trips"][trip[1][0]]["carrier"],
-            "flight_number": all_flights["trips"][trip[1][0]]["carrierTripNumber"],
-            "orig_city": all_flights["trips"][trip[1][0]]["from"],
-            "dest_city": all_flights["trips"][trip[1][-1]]["to"],
-            "num_tranship": len(trip[1]) - 1,
+            "price": trip["best_price"],
+            "depart_date_time": all_flights["trips"][trip["flight_ids"][0]][
+                "startDateTime"
+            ],
+            "arrive_date_time": all_flights["trips"][trip["flight_ids"][-1]][
+                "endDateTime"
+            ],
+            "carrier": all_flights["trips"][trip["flight_ids"][0]]["carrier"],
+            "flight_number": all_flights["trips"][trip["flight_ids"][0]][
+                "carrierTripNumber"
+            ],
+            "orig_city": all_flights["trips"][trip["flight_ids"][0]]["from"],
+            "dest_city": all_flights["trips"][trip["flight_ids"][-1]]["to"],
+            "num_tranship": len(trip["flight_ids"]) - 1,
             "tranship_cities": (
                 None
-                if len(trip[1]) == 1
+                if len(trip["flight_ids"]) == 1
                 else [
-                    all_flights["trips"][trip[1][i]]["to"]
-                    for i in range(len(trip[1]) - 1)
+                    all_flights["trips"][trip["flight_ids"][i]]["to"]
+                    for i in range(len(trip["flight_ids"]) - 1)
                 ]
             ),
-            "total_flight_time": trip[0],
+            "total_flight_time": trip["journey_time"],
         }
         res_lst.append(flight_info)
 
