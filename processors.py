@@ -15,7 +15,7 @@ def filter_transfer_lim(all_flights, tranship_limit):
 def get_journey_prices(all_flights, transport_var_filtered):
     # region func_description
     """
-    Returns transportationVariant key and price for every journe.
+    Returns transportationVariant key and price for every journey.
     transp_prices example {'RTJWn8': 12035.21, 'CYU9vu': 19232.2, 'b1W7wQ': 12383.96}
     """
     # endregion

@@ -566,6 +566,16 @@ airport_codes = [
         "webpage": "https://aviateka.su/all-airports/russia-ap/aeroport-pulkovo/",
     },
     {
+        "airport_name": "Аэропорт Ремезов",
+        "country": "Russia",
+        "city": "Тобольск",
+        "IATA code": "RMZ",
+        "ICAO code": "USTJ",
+        "Rus code": "РМЗ",
+        "type": "internal",
+        "webpage": "https://rmz.aero",
+    },
+    {
         "airport_name": "Аэропорт Сабетта",
         "country": "Russia",
         "city": "Сабетта",
