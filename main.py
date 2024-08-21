@@ -52,3 +52,5 @@ if __name__ == "__main__":
     schedule.every().minute.do(main)
     while True:
         schedule.run_pending()
+
+# Asyncio, selenium, aiohttp, aiosignal uninstalled
