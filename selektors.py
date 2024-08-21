@@ -19,8 +19,7 @@ def get_flight_data(url, request_data, city_codes):
     my_headers = {
         "User-Agent": ua.random,
     }
-
-    proxy_list = os.getenv("proxy_list")[1:-1].split(", ")
+    proxy_list = os.getenv("proxy_list")[1:].split(", ")
     proxy_ip = choice(proxy_list)
     my_proxies = {
         "http": f"http://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:{os.getenv('http_port')}",
@@ -53,7 +52,7 @@ def get_flight_data(url, request_data, city_codes):
         "cryptoTripsVersion": 61,
         "doNotMap": "true",
     }
-    # print("Страница запроса с IP:", requests.get("http://icanhazip.com", proxies=my_proxies).text.strip())
+
     all_flights = requests.get(
         url=url, params=params, proxies=my_proxies, headers=my_headers
     ).json()
