@@ -1,5 +1,5 @@
 import schedule
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
 from data import citycode_keys, search_keys, search_link_json
 from injektors import clean_expired_flights, clean_expired_search
@@ -8,7 +8,7 @@ from processors import (filter_transfer_lim, get_best_flights_descr,
                         get_cheapest_journeys, get_journey_prices)
 from selektors import get_data, get_flight_data
 
-load_dotenv()
+#load_dotenv()
 
 
 def main():

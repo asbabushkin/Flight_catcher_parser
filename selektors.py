@@ -19,12 +19,12 @@ def get_flight_data(url, request_data, city_codes):
     my_headers = {
         "User-Agent": ua.random,
     }
-    proxy_list = os.getenv("proxy_list")[1:].split(", ")
-    proxy_ip = choice(proxy_list)
-    my_proxies = {
-        "http": f"http://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:{os.getenv('http_port')}",
-        # 'https': f"https://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:{os.getenv('http_port')}"
-    }
+    # proxy_list = os.getenv("proxy_list")[1:].split(", ")
+    # proxy_ip = choice(proxy_list)
+    # my_proxies = {
+    #     "http": f"http://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:{os.getenv('http_port')}",
+    #     # 'https': f"https://{os.getenv('proxy_login')}:{os.getenv('proxy_password')}@{proxy_ip}:{os.getenv('http_port')}"
+    # }
 
     origin_city_code = dest_city_code = ""
     for i in city_codes:
@@ -54,7 +54,10 @@ def get_flight_data(url, request_data, city_codes):
     }
 
     all_flights = requests.get(
-        url=url, params=params, proxies=my_proxies, headers=my_headers
+        url=url,
+        params=params,
+#        proxies=my_proxies,
+        headers=my_headers
     ).json()
     if not all_flights["transportationVariants"]:
         return None
