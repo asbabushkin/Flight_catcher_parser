@@ -58,11 +58,11 @@ def send_result(best_flights, request_data):
 def set_connection():
     try:
         db_connection = ps2.connect(
-            host=os.getenv("db_host"),
-            user=os.getenv("db_user"),
-            password=os.getenv("db_password"),
-            port=os.getenv("db_port"),
-            database=os.getenv("db_name"),
+            host=os.getenv("HOST"),
+            user=os.getenv("POSTGRES_USER"),
+            password=os.getenv("POSTGRES_PASSWORD"),
+            database=os.getenv("POSTGRES_DB"),
+            port=os.getenv("PORT"),
         )
         db_connection.autocommit = True
         return db_connection
